@@ -12,7 +12,6 @@ const sections = [
   { id: "securite",      label: "Sécurité",        icon: "shield" },
   { id: "apparence",     label: "Apparence",       icon: "palette" },
   { id: "stockage",      label: "Stockage",        icon: "cloud" },
-  { id: "integrations",  label: "Intégrations",    icon: "sync" },
 ];
 
 const themes = [
@@ -513,6 +512,7 @@ function ApparenceSection() {
   const [sidebarHover, setSidebarHoverRaw] = useState(false);
   const setSidebarHover = (v) => {
     setSidebarHoverRaw(v);
+    localStorage.setItem('cloudspace_sidebar_hover', JSON.stringify(v));
     window.dispatchEvent(new CustomEvent('localPrefChange', { detail: { key: 'cloudspace_sidebar_hover', value: v } }));
     save({ sidebar_hover: v });
   };
@@ -525,7 +525,11 @@ function ApparenceSection() {
         if (data.font_size) setFontSize(data.font_size);
         if (data.compact_mode !== undefined) setCompactMode(data.compact_mode);
         if (data.sidebar_position) setSidebarPos(data.sidebar_position);
-        if (data.sidebar_hover !== undefined) setSidebarHoverRaw(data.sidebar_hover);
+        if (data.sidebar_hover !== undefined) {
+          setSidebarHoverRaw(data.sidebar_hover);
+          localStorage.setItem('cloudspace_sidebar_hover', JSON.stringify(data.sidebar_hover));
+          window.dispatchEvent(new CustomEvent('localPrefChange', { detail: { key: 'cloudspace_sidebar_hover', value: data.sidebar_hover } }));
+        }
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -731,177 +735,45 @@ function StockageSection() {
   );
 }
 
-function IntegrationsSection() {
-  const [autoBackup, setAutoBackup] = useState(true);
-  const [githubStatus, setGithubStatus] = useState(null);
 
-  useEffect(() => {
-    apiFetch('/api/github/status')
-      .then(r => r.json())
-      .then(data => setGithubStatus(data))
-      .catch(() => setGithubStatus({ connected: false }));
-  }, []);
-
-  const handleGithubConnect = async () => {
-    try {
-      const res = await apiFetch('/api/github/auth-url');
-      const data = await res.json();
-      if (res.ok) window.location.href = data.url;
-    } catch {}
-  };
-
-  const handleGithubDisconnect = async () => {
-    await apiFetch('/api/github/disconnect', { method: 'DELETE' });
-    setGithubStatus({ connected: false });
-  };
-
-  const staticServices = [
-    { id: 'google-drive', name: 'Google Drive', logo: '/google-drive.svg', desc: 'Synchroniser avec votre compte Google', connected: true,  lastSync: 'Il y a 2h' },
-    { id: 'dropbox',      name: 'Dropbox',      logo: '/dropbox.svg',      desc: 'Connecter votre stockage Dropbox',      connected: true,  lastSync: 'Hier' },
-    { id: 'onedrive',     name: 'OneDrive',     logo: '/microsoft-onedrive.svg', desc: 'Synchroniser avec Microsoft OneDrive', connected: false },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <Card>
-        <SectionTitle title="Services connectés" desc="Gérez vos connexions aux services de stockage cloud." />
-        <div className="divide-y divide-slate-100 dark:divide-border-dark">
-          {/* GitHub — connexion réelle */}
-          <div className="flex items-center gap-4 py-4 first:pt-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-background-dark border border-slate-100 dark:border-border-dark flex items-center justify-center flex-shrink-0">
-              <img src="/github.svg" alt="GitHub" className="w-6 h-6 dark:invert" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-slate-900 dark:text-white">GitHub</p>
-                {githubStatus?.connected && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                    Connecté
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {githubStatus?.connected
-                  ? `@${githubStatus.username}${githubStatus.name ? ` · ${githubStatus.name}` : ''}`
-                  : 'Accéder et sauvegarder vos dépôts'}
-              </p>
-            </div>
-            {githubStatus === null ? (
-              <div className="w-20 h-7 rounded-lg bg-slate-100 dark:bg-border-dark animate-pulse" />
-            ) : githubStatus.connected ? (
-              <button
-                onClick={handleGithubDisconnect}
-                className="text-[13px] font-medium text-slate-600 dark:text-slate-300 px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-border-dark hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all"
-              >
-                Déconnecter
-              </button>
-            ) : (
-              <button
-                onClick={handleGithubConnect}
-                className="text-[13px] font-medium text-white bg-primary px-4 py-1.5 rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Connecter
-              </button>
-            )}
-          </div>
-
-          {staticServices.map(s => (
-            <div key={s.id} className="flex items-center gap-4 py-4 last:pb-0">
-              <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-background-dark border border-slate-100 dark:border-border-dark flex items-center justify-center flex-shrink-0">
-                <img src={s.logo} alt={s.name} className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{s.name}</p>
-                  {s.connected && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                      Connecté
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {s.connected ? `Dernière sync : ${s.lastSync}` : s.desc}
-                </p>
-              </div>
-              {s.connected ? (
-                <button className="text-[13px] font-medium text-slate-600 dark:text-slate-300 px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-border-dark hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all">
-                  Déconnecter
-                </button>
-              ) : (
-                <button className="text-[13px] font-medium text-white bg-primary px-4 py-1.5 rounded-lg hover:bg-blue-600 transition-colors">
-                  Connecter
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <Row label="Sauvegarde automatique" desc="S'exécute chaque jour sur tous les services connectés">
-          <Toggle enabled={autoBackup} onChange={() => setAutoBackup(v => !v)} />
-        </Row>
-        <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100 dark:border-border-dark">
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="material-symbols-outlined text-[14px]">schedule</span>
-            Dernière sauvegarde : <span className="font-medium text-slate-700 dark:text-slate-300 ml-1">Aujourd'hui, 08:00</span>
-          </div>
-          <button className="text-[13px] font-medium text-primary px-3.5 py-1.5 rounded-lg border border-primary/30 hover:bg-primary/5 transition-colors">
-            Sauvegarder maintenant
-          </button>
-        </div>
-      </Card>
-    </div>
-  );
-}
 
 /* ─── Composant principal ─── */
 
 export default function Settings() {
   const [active, setActive] = useState("profil");
-  const current = sections.find(s => s.id === active);
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-background-light dark:bg-background-dark">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-background-dark">
 
-      {/* Navigation verticale */}
-      <aside className="w-56 flex-shrink-0 border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark flex flex-col py-6 px-3">
-        <p className="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Paramètres</p>
-        <nav className="flex flex-col gap-0.5">
+      {/* Onglets horizontaux */}
+      <div className="flex-shrink-0 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark px-6">
+        <nav className="flex items-center gap-0 -mb-px overflow-x-auto">
           {sections.map(s => (
             <button
               key={s.id}
               onClick={() => setActive(s.id)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors text-left ${
+              className={`flex items-center gap-2 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
                 active === s.id
-                  ? 'bg-primary/10 text-primary dark:text-primary'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark hover:text-slate-900 dark:hover:text-white'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <span className={`material-symbols-outlined ${active === s.id ? 'fill-current' : ''}`}>
+              <span className={`material-symbols-outlined text-[16px] ${active === s.id ? 'fill-current' : ''}`}>
                 {s.icon}
               </span>
               {s.label}
             </button>
           ))}
         </nav>
-      </aside>
+      </div>
 
       {/* Contenu */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-8 py-8">
-          <div className="mb-7">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{current.label}</h2>
-          </div>
-
-          {active === 'profil'        && <ProfilSection />}
-          {active === 'securite'      && <SecuriteSection />}
-          {active === 'apparence'     && <ApparenceSection />}
-
-          {active === 'stockage'      && <StockageSection />}
-          {active === 'integrations'  && <IntegrationsSection />}
+        <div className="max-w-2xl mx-auto px-8 py-8">
+          {active === 'profil'    && <ProfilSection />}
+          {active === 'securite'  && <SecuriteSection />}
+          {active === 'apparence' && <ApparenceSection />}
+          {active === 'stockage'  && <StockageSection />}
         </div>
       </main>
     </div>

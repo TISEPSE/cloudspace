@@ -58,7 +58,7 @@ export default function Trash() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
       {/* Title row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
@@ -84,7 +84,7 @@ export default function Trash() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center py-20 text-slate-400 dark:text-slate-500">
+        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
           <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
           Chargement...
         </div>
@@ -92,7 +92,7 @@ export default function Trash() {
 
       {/* Empty state */}
       {!loading && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
           <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">delete_sweep</span>
           <p className="text-slate-500 dark:text-slate-400 font-medium">La corbeille est vide</p>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">

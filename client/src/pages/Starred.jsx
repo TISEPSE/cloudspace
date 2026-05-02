@@ -106,7 +106,7 @@ export default function Starred() {
   const isEmpty = !loading && folders.length === 0 && files.length === 0
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Favoris</h2>
         <div className="flex items-center gap-2">
@@ -130,14 +130,14 @@ export default function Starred() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-20 text-slate-400 dark:text-slate-500">
+        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
           <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
           Chargement...
         </div>
       )}
 
       {isEmpty && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
           <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">star</span>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Aucun favori</p>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Marquez des fichiers avec ★ pour les retrouver ici.</p>

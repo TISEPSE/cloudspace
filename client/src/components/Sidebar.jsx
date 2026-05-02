@@ -7,19 +7,12 @@ import { useLocalPref } from '../hooks/useLocalPref'
 const navItems = [
   { path: '/dashboard', icon: 'dashboard',     label: 'Tableau de bord' },
   { path: '/gallery',   icon: 'photo_library', label: 'Galerie' },
-  { path: '/github',    icon: 'github',         label: 'GitHub' },
   { path: '/shared',    icon: 'group',          label: 'Partagés avec moi' },
   { path: '/recent',    icon: 'schedule',       label: 'Récents' },
   { path: '/starred',   icon: 'star',           label: 'Favoris' },
   { path: '/history',   icon: 'history',        label: 'Historique' },
   { path: '/trash',     icon: 'delete',         label: 'Corbeille' },
 ]
-
-const GITHUB_SVG = (collapsed) => (
-  <svg viewBox="0 0 24 24" className={`flex-shrink-0 fill-current ${collapsed ? 'w-5 h-5' : 'w-5 h-5'}`}>
-    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-  </svg>
-)
 
 function FolderNode({ folder, depth = 0, collapsed }) {
   const [open, setOpen] = useState(false)
@@ -108,13 +101,16 @@ export default function Sidebar() {
   const isDriveActive = location.pathname === '/drive' || location.pathname.startsWith('/drive/')
 
   return (
+    // En mode hover-expand : le wrapper réserve 56px dans le layout, la sidebar est en overlay absolu
+    <div className={hoverExpand ? 'relative w-[56px] flex-shrink-0' : 'contents'}>
     <aside
       onMouseEnter={() => hoverExpand && setIsHovered(true)}
       onMouseLeave={() => hoverExpand && setIsHovered(false)}
       className={`
-        flex-shrink-0 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark
-        flex flex-col z-20 overflow-hidden
+        bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark
+        flex flex-col overflow-hidden
         transition-[width] duration-200 ease-in-out
+        ${hoverExpand ? 'absolute inset-y-0 left-0 z-30' : 'flex-shrink-0 z-20'}
         ${collapsed ? 'w-[56px]' : 'w-60'}
         ${hoverExpand && isHovered ? 'shadow-xl shadow-black/10 dark:shadow-black/30' : ''}
       `}
@@ -189,10 +185,7 @@ export default function Sidebar() {
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark'
                 }`}
               >
-                {item.icon === 'github'
-                  ? GITHUB_SVG(collapsed)
-                  : <span className={`material-symbols-outlined flex-shrink-0 ${isActive ? 'fill-current' : ''} ${item.path === '/starred' && isActive ? 'text-amber-500' : ''}`}>{item.icon}</span>
-                }
+                <span className={`material-symbols-outlined flex-shrink-0 ${isActive ? 'fill-current' : ''} ${item.path === '/starred' && isActive ? 'text-amber-500' : ''}`}>{item.icon}</span>
                 {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
               </NavLink>
             )
@@ -221,5 +214,6 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
+    </div>
   )
 }

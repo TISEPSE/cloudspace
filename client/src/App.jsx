@@ -16,7 +16,6 @@ import Settings from './pages/Settings'
 import FileExplorerList from './pages/FileExplorerList'
 import FileExplorerDetail from './pages/FileExplorerDetail'
 import Gallery from './pages/Gallery'
-import GitHub from './pages/GitHub'
 
 function App() {
   return (
@@ -42,7 +41,6 @@ function App() {
         <Route path="trash" element={<Trash />} />
         <Route path="history" element={<History />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="github" element={<GitHub />} />
       </Route>
     </Routes>
   )

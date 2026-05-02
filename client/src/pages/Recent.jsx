@@ -70,7 +70,7 @@ export default function Recent() {
   }, [])
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Récents</h2>
@@ -79,14 +79,14 @@ export default function Recent() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-20 text-slate-400 dark:text-slate-500">
+        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
           <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
           Chargement...
         </div>
       )}
 
       {!loading && groups.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
           <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">history</span>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Aucune activité récente</p>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Vos fichiers récemment consultés apparaîtront ici.</p>
