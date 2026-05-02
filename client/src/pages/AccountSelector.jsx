@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 function initials(profile) {
@@ -104,9 +104,17 @@ export default function AccountSelector() {
           onClick={() => navigate('/login')}
           className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
+          <span className="material-symbols-outlined text-[18px]">login</span>
           {savedProfiles.length > 0 ? 'Utiliser un autre compte' : 'Se connecter'}
         </button>
+
+        <Link
+          to="/register"
+          className="mt-2 w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
+        >
+          <span className="material-symbols-outlined text-[18px]">person_add</span>
+          Créer un nouveau compte
+        </Link>
 
         <p className="mt-8 text-center text-xs text-slate-600">
           Les sessions ne persistent pas entre les redémarrages — votre mot de passe est requis à chaque ouverture.

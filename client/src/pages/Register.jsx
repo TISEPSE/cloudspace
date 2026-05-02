@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function Login() {
-  const [searchParams] = useSearchParams()
-  const prefillEmail = searchParams.get('email') || ''
-
-  const [email, setEmail] = useState(prefillEmail)
+export default function Register() {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { register } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -18,7 +17,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      await register(firstName, lastName, email, password)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)
@@ -49,8 +48,8 @@ export default function Login() {
         </div>
 
         <div className="bg-[#141f2e] rounded-2xl border border-[#1e2d3d] p-7 shadow-2xl shadow-black/40">
-          <h2 className="text-lg font-semibold text-white mb-1">Bon retour</h2>
-          <p className="text-sm text-slate-400 mb-6">Connectez-vous à votre espace</p>
+          <h2 className="text-lg font-semibold text-white mb-1">Créer un compte</h2>
+          <p className="text-sm text-slate-400 mb-6">Inscrivez-vous pour commencer sur CloudSpace</p>
 
           {error && (
             <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
@@ -59,13 +58,34 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-3.5" autoComplete="off">
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Prénom"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+                required
+                className="bg-[#0c1520] border border-[#1e2d3d] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+              />
+              <input
+                type="text"
+                placeholder="Nom"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+                required
+                className="bg-[#0c1520] border border-[#1e2d3d] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+              />
+            </div>
+
             <input
               type="email"
               placeholder="Adresse e-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              autoComplete="new-email"
               required
               className="w-full bg-[#0c1520] border border-[#1e2d3d] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
             />
@@ -75,10 +95,9 @@ export default function Login() {
               placeholder="Mot de passe"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               minLength={6}
-              autoFocus={!!prefillEmail}
               className="w-full bg-[#0c1520] border border-[#1e2d3d] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
             />
 
@@ -93,32 +112,19 @@ export default function Login() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Connexion...
+                  Création...
                 </span>
-              ) : 'Se connecter'}
+              ) : 'Créer un compte'}
             </button>
           </form>
 
-          <p className="mt-3 text-center">
-            <Link
-              to="/forgot-password"
-              className="text-xs text-slate-500 hover:text-blue-400 hover:underline transition-colors"
-            >
-              Mot de passe oublié ?
-            </Link>
-          </p>
-
           <p className="mt-4 text-center text-sm text-slate-400">
-            Pas encore de compte ?
-            <Link to="/register" className="ml-1.5 text-blue-400 hover:text-blue-300 font-medium transition-colors">
-              S'inscrire
+            Déjà un compte ?
+            <Link to="/login" className="ml-1.5 text-blue-400 hover:text-blue-300 font-medium transition-colors">
+              Se connecter
             </Link>
           </p>
         </div>
-
-        <p className="mt-4 text-center text-xs text-slate-600">
-          Demo: <span className="text-slate-500">alex.davidson@cloudspace.com</span> / <span className="text-slate-500">password123</span>
-        </p>
       </div>
     </div>
   )
