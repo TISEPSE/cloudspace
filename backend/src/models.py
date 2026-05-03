@@ -81,7 +81,7 @@ class UserSettings(db.Model):
     font_size = db.Column(db.String(10), default='medium')
     compact_mode = db.Column(db.Boolean, default=False)
     sidebar_position = db.Column(db.String(10), default='left')
-    sidebar_hover = db.Column(db.Boolean, default=False)
+    sidebar_hover = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
                            onupdate=lambda: datetime.now(timezone.utc))

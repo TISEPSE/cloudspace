@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { apiFetch } from '../lib/api'
+import { apiFetch, getAccessToken } from '../lib/api'
+import { useUpload } from '../contexts/UploadContext'
+import { useLocalPref } from '../hooks/useLocalPref'
+import { formatDisplayName } from '../utils/filename'
+import FilePreviewModal from '../components/FilePreviewModal'
 
-function PhotoCard({ photo, gridSize, onClick }) {
-  const imgUrl = `/api/files/${photo.id}/download?inline=true`
+function PhotoCard({ photo, onClick, displayName }) {
+  const token = getAccessToken()
+  const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
 
   return (
     <div
@@ -16,17 +21,9 @@ function PhotoCard({ photo, gridSize, onClick }) {
         loading="lazy"
         onError={e => { e.target.style.display = 'none' }}
       />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-between opacity-0 group-hover:opacity-100">
-        <div className="flex justify-end p-1.5">
-          <button
-            onClick={e => e.stopPropagation()}
-            className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-white text-[16px]">download</span>
-          </button>
-        </div>
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
         <div className="px-2 pb-2">
-          <p className="text-[11px] font-medium text-white truncate">{photo.name}</p>
+          <p className="text-[11px] font-medium text-white truncate">{displayName}</p>
           <p className="text-[10px] text-white/60">{photo.formatted_size}</p>
         </div>
       </div>
@@ -34,46 +31,26 @@ function PhotoCard({ photo, gridSize, onClick }) {
   )
 }
 
-function Lightbox({ photo, onClose, onPrev, onNext }) {
-  if (!photo) return null
-  const imgUrl = `/api/files/${photo.id}/download?inline=true`
-
+function MosaicCard({ photo, onClick, displayName }) {
+  const token = getAccessToken()
+  const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
-      <button
-        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-        onClick={onClose}
-      >
-        <span className="material-symbols-outlined text-white">close</span>
-      </button>
-
-      <button
-        className="absolute left-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-        onClick={e => { e.stopPropagation(); onPrev() }}
-      >
-        <span className="material-symbols-outlined text-white text-xl">chevron_left</span>
-      </button>
-
-      <div
-        className="w-[70vw] max-w-[700px] aspect-square rounded-2xl overflow-hidden bg-black/40 flex items-center justify-center"
-        onClick={e => e.stopPropagation()}
-      >
-        <img src={imgUrl} alt={photo.name} className="max-w-full max-h-full object-contain" />
-      </div>
-
-      <button
-        className="absolute right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-        onClick={e => { e.stopPropagation(); onNext() }}
-      >
-        <span className="material-symbols-outlined text-white text-xl">chevron_right</span>
-      </button>
-
-      <div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md rounded-xl px-5 py-2.5 flex items-center gap-5"
-        onClick={e => e.stopPropagation()}
-      >
-        <p className="text-sm font-medium text-white">{photo.name}</p>
-        <p className="text-xs text-white/60">{photo.formatted_size}</p>
+    <div
+      onClick={() => onClick(photo)}
+      className="group relative break-inside-avoid mb-2 rounded-lg overflow-hidden cursor-pointer border border-slate-200/50 dark:border-border-dark/50 hover:border-primary/40 transition-all"
+    >
+      <img
+        src={imgUrl}
+        alt={photo.name}
+        className="w-full h-auto block"
+        loading="lazy"
+        onError={e => { e.target.style.display = 'none' }}
+      />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
+        <div className="px-2 pb-2">
+          <p className="text-[11px] font-medium text-white truncate">{displayName}</p>
+          <p className="text-[10px] text-white/60">{photo.formatted_size}</p>
+        </div>
       </div>
     </div>
   )
@@ -92,55 +69,50 @@ const gridSizes = {
   large:  'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
 }
 
-function MosaicCard({ photo, onClick }) {
-  const imgUrl = `/api/files/${photo.id}/download?inline=true`
-  return (
-    <div
-      onClick={() => onClick(photo)}
-      className="group relative break-inside-avoid mb-2 rounded-lg overflow-hidden cursor-pointer border border-slate-200/50 dark:border-border-dark/50 hover:border-primary/40 transition-all"
-    >
-      <img
-        src={imgUrl}
-        alt={photo.name}
-        className="w-full h-auto block"
-        loading="lazy"
-        onError={e => { e.target.style.display = 'none' }}
-      />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-between opacity-0 group-hover:opacity-100">
-        <div className="flex justify-end p-1.5">
-          <button
-            onClick={e => e.stopPropagation()}
-            className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-white text-[16px]">download</span>
-          </button>
-        </div>
-        <div className="px-2 pb-2">
-          <p className="text-[11px] font-medium text-white truncate">{photo.name}</p>
-          <p className="text-[10px] text-white/60">{photo.formatted_size}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function Gallery() {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('medium')
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const fileInputRef = useRef(null)
+  const { uploadFiles, queue } = useUpload()
+  const [showExt] = useLocalPref('cloudspace_show_extensions', true)
+  const activeUploadCount = queue.filter(u => u.status === 'uploading' || u.status === 'pending').length
 
-  useEffect(() => {
+  const fetchPhotos = () => {
     apiFetch('/api/files/gallery')
       .then(r => r.json())
       .then(data => setPhotos(data.images || []))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { fetchPhotos() }, [])
+
+  // Refresh la galerie quand tous les uploads sont terminés
+  useEffect(() => {
+    if (activeUploadCount === 0 && queue.some(u => u.status === 'done')) {
+      fetchPhotos()
+    }
+  }, [activeUploadCount, queue])
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files)
+    if (files.length > 0) uploadFiles(files)
+    e.target.value = ''
+  }
 
   const selectedIndex = selectedPhoto ? photos.findIndex(p => p.id === selectedPhoto.id) : -1
-  const handlePrev = () => { if (selectedIndex > 0) setSelectedPhoto(photos[selectedIndex - 1]) }
-  const handleNext = () => { if (selectedIndex < photos.length - 1) setSelectedPhoto(photos[selectedIndex + 1]) }
+
+  // Navigation prev/next dans le viewer (flèches clavier)
+  useEffect(() => {
+    if (!selectedPhoto) return
+    const handler = (e) => {
+      if (e.key === 'ArrowLeft' && selectedIndex > 0) setSelectedPhoto(photos[selectedIndex - 1])
+      else if (e.key === 'ArrowRight' && selectedIndex < photos.length - 1) setSelectedPhoto(photos[selectedIndex + 1])
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [selectedPhoto, selectedIndex, photos])
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
@@ -175,7 +147,7 @@ export default function Gallery() {
             <span className="material-symbols-outlined">add_photo_alternate</span>
             Upload
           </button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" />
+          <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileSelect} />
         </div>
       </div>
 
@@ -200,24 +172,19 @@ export default function Gallery() {
         viewMode === 'mosaic' ? (
           <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
             {photos.map(photo => (
-              <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} />
+              <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
             ))}
           </div>
         ) : (
           <div className={`grid ${gridSizes[viewMode]} gap-2`}>
             {photos.map(photo => (
-              <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} />
+              <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
             ))}
           </div>
         )
       )}
 
-      <Lightbox
-        photo={selectedPhoto}
-        onClose={() => setSelectedPhoto(null)}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
+      <FilePreviewModal file={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
     </div>
   )
 }

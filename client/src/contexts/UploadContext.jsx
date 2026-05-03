@@ -11,10 +11,20 @@ export function UploadProvider({ children }) {
   const [queue, setQueue] = useState([])
   const [visible, setVisible] = useState(false)
   const idCounter = useRef(0)
+  // Dossier actif (mis à jour par MyDrive lors de la navigation). Permet aux uploads
+  // déclenchés depuis la sidebar/galerie d'atterrir dans le dossier courant.
+  const currentFolderIdRef = useRef(null)
 
-  const uploadFiles = useCallback((fileList, parentId = null) => {
+  const setCurrentFolderId = useCallback((id) => {
+    currentFolderIdRef.current = id || null
+  }, [])
+
+  const uploadFiles = useCallback((fileList, parentId = undefined) => {
     const files = Array.from(fileList)
     if (files.length === 0) return
+
+    // Si parentId non fourni explicitement, on utilise le dossier courant
+    const targetParentId = parentId === undefined ? currentFolderIdRef.current : parentId
 
     const entries = files.map(file => ({
       id: ++idCounter.current,
@@ -22,7 +32,7 @@ export function UploadProvider({ children }) {
       size: file.size,
       type: file.type,
       file,
-      parentId,
+      parentId: targetParentId,
       progress: 0,
       status: 'pending',
     }))
@@ -35,7 +45,7 @@ export function UploadProvider({ children }) {
       const xhr = new XMLHttpRequest()
       const formData = new FormData()
       formData.append('file', entry.file)
-      if (parentId) formData.append('parent_id', parentId)
+      if (targetParentId) formData.append('parent_id', targetParentId)
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
@@ -99,7 +109,7 @@ export function UploadProvider({ children }) {
   }, [])
 
   return (
-    <UploadContext.Provider value={{ queue, visible, uploadFiles, clearDone, dismiss }}>
+    <UploadContext.Provider value={{ queue, visible, uploadFiles, clearDone, dismiss, setCurrentFolderId }}>
       {children}
     </UploadContext.Provider>
   )

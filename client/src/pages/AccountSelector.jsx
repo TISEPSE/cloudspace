@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -21,11 +22,19 @@ function avatarColor(email) {
 }
 
 export default function AccountSelector() {
-  const { savedProfiles, removeSavedProfile } = useAuth()
+  const { savedProfiles, removeSavedProfile, loginWithProfile } = useAuth()
   const navigate = useNavigate()
+  const [loadingEmail, setLoadingEmail] = useState(null)
 
-  const handleSelect = (email) => {
-    navigate(`/login?email=${encodeURIComponent(email)}`)
+  const handleSelect = async (email) => {
+    setLoadingEmail(email)
+    const ok = await loginWithProfile(email)
+    setLoadingEmail(null)
+    if (ok) {
+      navigate('/dashboard', { replace: true })
+    } else {
+      navigate(`/login?email=${encodeURIComponent(email)}`)
+    }
   }
 
   return (
@@ -55,8 +64,12 @@ export default function AccountSelector() {
             {savedProfiles.map((profile) => (
               <div
                 key={profile.email}
-                className="group flex items-center gap-4 p-4 bg-[#141f2e] border border-[#1e2d3d] hover:border-blue-500/40 hover:bg-[#172030] rounded-2xl cursor-pointer transition-all duration-150"
-                onClick={() => handleSelect(profile.email)}
+                className={`group flex items-center gap-4 p-4 bg-[#141f2e] border rounded-2xl cursor-pointer transition-all duration-150 ${
+                  loadingEmail === profile.email
+                    ? 'border-blue-500/60 bg-[#172030]'
+                    : 'border-[#1e2d3d] hover:border-blue-500/40 hover:bg-[#172030]'
+                }`}
+                onClick={() => !loadingEmail && handleSelect(profile.email)}
               >
                 {/* Avatar */}
                 <div className="flex-shrink-0">
@@ -64,7 +77,7 @@ export default function AccountSelector() {
                     <img
                       src={profile.avatar_url}
                       alt={profile.first_name}
-                      className="w-12 h-12 rounded-full ring-2 ring-white/10"
+                      className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
                     />
                   ) : (
                     <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${avatarColor(profile.email)} flex items-center justify-center text-white font-bold text-base ring-2 ring-white/10`}>
@@ -83,16 +96,25 @@ export default function AccountSelector() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeSavedProfile(profile.email) }}
-                    className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                    title="Retirer ce compte"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
-                  </button>
-                  <span className="material-symbols-outlined text-slate-500 group-hover:text-blue-400 text-[18px] transition-colors">
-                    chevron_right
-                  </span>
+                  {loadingEmail === profile.email ? (
+                    <svg className="animate-spin w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeSavedProfile(profile.email) }}
+                        className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        title="Retirer ce compte"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                      <span className="material-symbols-outlined text-slate-500 group-hover:text-blue-400 text-[18px] transition-colors">
+                        chevron_right
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -117,7 +139,7 @@ export default function AccountSelector() {
         </Link>
 
         <p className="mt-8 text-center text-xs text-slate-600">
-          Les sessions ne persistent pas entre les redémarrages — votre mot de passe est requis à chaque ouverture.
+          Les sessions sont mémorisées dans ce navigateur pendant 7 jours.
         </p>
       </div>
     </div>

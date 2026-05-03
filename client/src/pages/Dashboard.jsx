@@ -336,7 +336,7 @@ export default function Dashboard() {
           </div>
 
           {/* Legend */}
-          <div className="space-y-3">
+          <div className="space-y-3 pb-3">
             {storageByType.map((item) => (
               <div key={item.type} className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">

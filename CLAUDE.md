@@ -1,5 +1,12 @@
 # CloudSpace — Instructions pour Claude
 
+## Toujours consulter le `todo.md` au début
+
+Avant de commencer toute nouvelle session de travail, **lis `todo.md` à la racine du projet**. Il contient la liste vivante des bugs, améliorations et priorités. Mets-le à jour quand :
+- tu termines une tâche (coche `[x]` et déplace en « Fait récemment »)
+- l'utilisateur signale un nouveau problème (ajoute en « En cours »)
+- tu identifies une amélioration utile (ajoute en « Idées / backlog »)
+
 ## Déploiement après chaque modification
 
 Après **toute modification** du projet (frontend ou backend), tu dois obligatoirement :

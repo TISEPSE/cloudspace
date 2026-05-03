@@ -7,6 +7,8 @@ import MoveItemModal from '../components/MoveItemModal'
 import ShareModal from '../components/ShareModal'
 import { useUpload } from '../contexts/UploadContext'
 import { apiFetch, getAccessToken, downloadFile } from '../lib/api'
+import { useLocalPref } from '../hooks/useLocalPref'
+import { formatDisplayName, splitNameExt } from '../utils/filename'
 
 function VideoThumbnail({ src, className }) {
   const ref = useRef(null)
@@ -174,19 +176,25 @@ function ConfirmTrashModal({ file, onClose, onConfirm }) {
 function RenameModal({ file, onClose, onConfirm }) {
   const [name, setName] = useState('')
   const inputRef = useRef(null)
+  const isFolder = file?.is_folder
+  const { ext } = file && !isFolder ? splitNameExt(file.name) : { ext: '' }
 
   useEffect(() => {
     if (file) {
-      setName(file.name)
+      const initial = isFolder ? file.name : splitNameExt(file.name).base
+      setName(initial)
       setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 50)
     }
-  }, [file])
+  }, [file, isFolder])
 
   if (!file) return null
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (name.trim() && name.trim() !== file.name) onConfirm(name.trim())
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const fullName = isFolder ? trimmed : trimmed + ext
+    if (fullName !== file.name) onConfirm(fullName)
   }
 
   return (
@@ -208,24 +216,32 @@ function RenameModal({ file, onClose, onConfirm }) {
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Name</label>
-          <input
-            ref={inputRef}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-          />
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nom</label>
+          <div className="relative flex items-center bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-all">
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 bg-transparent rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+            />
+            {ext && (
+              <span className="pr-4 text-sm text-slate-400 dark:text-slate-500 font-mono select-none">{ext}</span>
+            )}
+          </div>
+          {ext && (
+            <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">L'extension {ext} est conservée automatiquement.</p>
+          )}
           <div className="flex items-center justify-end gap-3 mt-6">
             <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-border-dark rounded-xl transition-colors">
-              Cancel
+              Annuler
             </button>
             <button
               type="submit"
-              disabled={!name.trim() || name.trim() === file.name}
+              disabled={!name.trim() || (isFolder ? name.trim() === file.name : name.trim() === splitNameExt(file.name).base)}
               className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Rename
+              Renommer
             </button>
           </div>
         </form>
@@ -429,15 +445,18 @@ function FolderCard({ folder, onOpen, onAction }) {
         isLocked={folder.is_locked}
         onAction={(id) => onAction(id, folder)}
         className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-      />
+      >
+        <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
+      </FileContextMenu>
     </div>
   )
 }
 
-function FileCard({ file, onPreview, onAction }) {
+function FileCard({ file, onPreview, onAction, showExt }) {
   const token = getAccessToken()
   const isImage = file.has_content && file.mime_type?.startsWith('image/')
   const isVideo = file.has_content && file.mime_type?.startsWith('video/')
+  const displayName = formatDisplayName(file.name, showExt)
   return (
     <div
       onClick={() => onPreview(file)}
@@ -464,11 +483,11 @@ function FileCard({ file, onPreview, onAction }) {
       </div>
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{file.name}</p>
+          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{file.formatted_size} &bull; {file.formatted_date}</p>
         </div>
         <FileContextMenu onAction={(id) => onAction(id, file)} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-          <span className="material-symbols-outlined text-[16px]">more_vert</span>
+          <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
         </FileContextMenu>
       </div>
     </div>
@@ -486,7 +505,7 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
               return (
                 <li key="root" className="inline-flex items-center">
                   {isLast ? (
-                    <span className="text-2xl font-bold text-slate-900 dark:text-white">Mon Drive</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">Mon Drive</span>
                   ) : (
                     <Link to="/drive" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white transition-colors">
                       Mon Drive
@@ -497,9 +516,9 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
             }
             return (
               <li key={crumb.id} className="inline-flex items-center">
-                <span className="material-symbols-outlined text-slate-400 text-xl mx-0.5">chevron_right</span>
+                <span className="material-symbols-outlined text-slate-400 text-[16px] mx-0.5">chevron_right</span>
                 {isLast ? (
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">{crumb.name}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{crumb.name}</span>
                 ) : (
                   <Link to={`/drive/folder/${crumb.id}`} className="text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white transition-colors">{crumb.name}</Link>
                 )}
@@ -542,7 +561,7 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
   )
 }
 
-function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileAction, onFolderAction }) {
+function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileAction, onFolderAction, showExt }) {
   return (
     <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -578,8 +597,10 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
                   isFolder
                   isLocked={folder.is_locked}
                   onAction={(id) => onFolderAction(id, folder)}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                />
+                  className="w-8 h-8 inline-flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <span className="material-symbols-outlined text-[18px] leading-none">more_vert</span>
+                </FileContextMenu>
               </td>
             </tr>
           ))}
@@ -590,13 +611,18 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
                   <div className={`w-8 h-8 rounded-lg ${file.icon_bg} flex items-center justify-center flex-shrink-0`}>
                     <span className={`material-symbols-outlined text-lg ${file.icon_color}`}>{file.icon}</span>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{file.name}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate" title={file.name}>{formatDisplayName(file.name, showExt)}</p>
                 </div>
               </td>
               <td className="px-5 py-3 hidden md:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_date}</span></td>
               <td className="px-5 py-3 hidden sm:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_size}</span></td>
               <td className="px-5 py-3 text-right">
-                <FileContextMenu onAction={(id) => onFileAction(id, file)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+                <FileContextMenu
+                  onAction={(id) => onFileAction(id, file)}
+                  className="w-8 h-8 inline-flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <span className="material-symbols-outlined text-[18px] leading-none">more_vert</span>
+                </FileContextMenu>
               </td>
             </tr>
           ))}
@@ -630,7 +656,14 @@ export default function MyDrive() {
   const dragCounterRef = useRef(0)
   const dropZoneRef = useRef(null)
   const fileInputRef = useRef(null)
-  const { uploadFiles, queue } = useUpload()
+  const { uploadFiles, queue, setCurrentFolderId } = useUpload()
+  const [showExt] = useLocalPref('cloudspace_show_extensions', true)
+
+  // Synchronise le dossier actif côté UploadContext (sidebar/galerie pourront uploader ici)
+  useEffect(() => {
+    setCurrentFolderId(folderId || null)
+    return () => setCurrentFolderId(null)
+  }, [folderId, setCurrentFolderId])
 
   const fetchContents = useCallback(async () => {
     try {
@@ -921,7 +954,7 @@ export default function MyDrive() {
             files.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {files.map((file) => (
-                  <FileCard key={file.id} file={file} onPreview={setPreviewFile} onAction={handleFileAction} />
+                  <FileCard key={file.id} file={file} onPreview={setPreviewFile} onAction={handleFileAction} showExt={showExt} />
                 ))}
               </div>
             ) : folders.length > 0 ? null : null
@@ -933,6 +966,7 @@ export default function MyDrive() {
               onFilePreview={setPreviewFile}
               onFileAction={handleFileAction}
               onFolderAction={handleFolderAction}
+              showExt={showExt}
             />
           )}
         </section>

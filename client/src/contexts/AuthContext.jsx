@@ -3,6 +3,8 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens, getSessionUser
 
 const AuthContext = createContext(null)
 const PROFILES_KEY = 'cloudspace_saved_profiles'
+const SESSION_STARTED_KEY = 'cloudspace_session_started'
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000 // 24 heures
 
 export function useAuth() {
   return useContext(AuthContext)
@@ -36,8 +38,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [savedProfiles, setSavedProfiles] = useState(loadSavedProfiles)
 
-  const saveProfile = useCallback((userData) => {
+  const saveProfile = useCallback((userData, refreshToken = null) => {
     setSavedProfiles(prev => {
+      const existing = prev.find(p => p.email === userData.email)
       const filtered = prev.filter(p => p.email !== userData.email)
       const profile = {
         id: userData.id,
@@ -45,6 +48,7 @@ export function AuthProvider({ children }) {
         first_name: userData.first_name,
         last_name: userData.last_name,
         avatar_url: userData.avatar_url || null,
+        refresh_token: refreshToken ?? existing?.refresh_token ?? null,
       }
       const next = [profile, ...filtered]
       persistProfiles(next)
@@ -101,6 +105,14 @@ export function AuthProvider({ children }) {
 
   const removeSavedProfile = useCallback((email) => {
     setSavedProfiles(prev => {
+      const profile = prev.find(p => p.email === email)
+      if (profile?.refresh_token) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: profile.refresh_token }),
+        }).catch(() => {})
+      }
       const next = prev.filter(p => p.email !== email)
       persistProfiles(next)
       return next
@@ -118,7 +130,8 @@ export function AuthProvider({ children }) {
 
     setTokens(data.access_token, data.refresh_token)
     setSessionUser(data.user)
-    saveProfile(data.user)
+    saveProfile(data.user, data.refresh_token)
+    localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
     setUser(data.user)
     return data.user
   }, [saveProfile])
@@ -134,23 +147,89 @@ export function AuthProvider({ children }) {
 
     setTokens(data.access_token, data.refresh_token)
     setSessionUser(data.user)
-    saveProfile(data.user)
+    saveProfile(data.user, data.refresh_token)
+    localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
     setUser(data.user)
     return data.user
   }, [saveProfile])
 
-  const logout = useCallback(async () => {
-    const refresh = getRefreshToken()
+  const loginWithProfile = useCallback(async (email) => {
+    const profile = loadSavedProfiles().find(p => p.email === email)
+    if (!profile?.refresh_token) return false
     try {
-      await fetch('/api/auth/logout', {
+      const res = await fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refresh }),
+        body: JSON.stringify({ refresh_token: profile.refresh_token }),
       })
-    } catch { /* ignore */ }
+      if (!res.ok) return false
+      const data = await res.json()
+      setTokens(data.access_token, profile.refresh_token)
+      localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
+      await fetchAndSetProfile(profile)
+      return true
+    } catch {
+      return false
+    }
+  }, [fetchAndSetProfile])
+
+  const logout = useCallback(() => {
+    const refresh = getRefreshToken()
+    if (refresh && user) saveProfile(user, refresh)
+    localStorage.removeItem(SESSION_STARTED_KEY)
     clearTokens()
     setUser(null)
-  }, [])
+  }, [user, saveProfile])
+
+  const logoutEverywhere = useCallback(async () => {
+    const refresh = getRefreshToken()
+    if (refresh) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refresh }),
+        })
+      } catch { /* ignore */ }
+      if (user) removeSavedProfile(user.email)
+    }
+    localStorage.removeItem(SESSION_STARTED_KEY)
+    clearTokens()
+    setUser(null)
+  }, [user, removeSavedProfile])
+
+  // Auto-déconnexion après 24h
+  useEffect(() => {
+    if (!user) return
+
+    const check = () => {
+      const started = localStorage.getItem(SESSION_STARTED_KEY)
+      if (started && Date.now() - parseInt(started, 10) > SESSION_DURATION_MS) {
+        const refresh = getRefreshToken()
+        if (refresh && user) {
+          setSavedProfiles(prev => {
+            const existing = prev.find(p => p.email === user.email)
+            const filtered = prev.filter(p => p.email !== user.email)
+            const profile = { ...user, refresh_token: refresh, avatar_url: user.avatar_url || null, ...(existing || {}) }
+            const next = [profile, ...filtered]
+            persistProfiles(next)
+            return next
+          })
+        }
+        localStorage.removeItem(SESSION_STARTED_KEY)
+        clearTokens()
+        setUser(null)
+      }
+    }
+
+    check()
+    const interval = setInterval(check, 60 * 1000)
+    window.addEventListener('visibilitychange', check)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('visibilitychange', check)
+    }
+  }, [user])
 
   const updateUser = useCallback((updates) => {
     setUser(prev => {
@@ -163,7 +242,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, login, register, logout, updateUser,
+      user, loading, login, register, logout, logoutEverywhere, updateUser, loginWithProfile,
       isAuthenticated: !!user,
       savedProfiles, removeSavedProfile,
     }}>

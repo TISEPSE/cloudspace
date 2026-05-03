@@ -1,15 +1,19 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc libmagic1 && \
+    libpq-dev gcc libmagic1 gosu && \
     rm -rf /var/lib/apt/lists/*
+
+# Crée l'utilisateur non-root (UID/GID 1000) que l'entrypoint utilisera après le chown du volume
+RUN groupadd -g 1000 appuser && useradd -m -u 1000 -g 1000 -s /bin/sh appuser
 
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . ./
 
-RUN mkdir -p /app/uploads/files /app/uploads/avatars /app/uploads/previews
+RUN mkdir -p /app/uploads/files /app/uploads/avatars /app/uploads/previews && \
+    chown -R appuser:appuser /app
 
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh

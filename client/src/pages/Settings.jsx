@@ -4,6 +4,7 @@ import { apiFetch } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
+import { useLocalPref } from "../hooks/useLocalPref";
 
 /* ─── Données ─── */
 
@@ -107,7 +108,7 @@ function SegmentControl({ value, options, onChange }) {
 /* ─── Sections ─── */
 
 function ProfilSection() {
-  const { updateUser, logout } = useAuth()
+  const { updateUser, logoutEverywhere } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const inputClass = "w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors";
@@ -132,7 +133,7 @@ function ProfilSection() {
       })
       const data = await r.json()
       if (r.ok) {
-        await logout()
+        await logoutEverywhere()
         navigate('/login', { replace: true })
       } else {
         setDeleteError(data.error || 'Erreur lors de la suppression')
@@ -509,7 +510,8 @@ function ApparenceSection() {
   const [fontSize, setFontSize] = useState('medium');
   const [compactMode, setCompactMode] = useState(false);
   const [sidebarPos, setSidebarPos] = useState('left');
-  const [sidebarHover, setSidebarHoverRaw] = useState(false);
+  const [sidebarHover, setSidebarHoverRaw] = useState(true);
+  const [showExtensions, setShowExtensions] = useLocalPref('cloudspace_show_extensions', true);
   const setSidebarHover = (v) => {
     setSidebarHoverRaw(v);
     localStorage.setItem('cloudspace_sidebar_hover', JSON.stringify(v));
@@ -588,6 +590,12 @@ function ApparenceSection() {
           desc="Réduite aux icônes, s'ouvre au survol"
         >
           <Toggle enabled={sidebarHover} onChange={() => setSidebarHover(!sidebarHover)} />
+        </Row>
+        <Row
+          label="Afficher les extensions"
+          desc="Affiche .pdf, .png, etc. à la fin des noms de fichiers"
+        >
+          <Toggle enabled={showExtensions} onChange={() => setShowExtensions(!showExtensions)} />
         </Row>
       </Card>
     </div>

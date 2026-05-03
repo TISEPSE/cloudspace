@@ -36,7 +36,18 @@ logger = logging.getLogger(__name__)
 def create_app():
     app = Flask(__name__)
 
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
+    secret_key = os.getenv('SECRET_KEY')
+    if not secret_key:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required. "
+            "Set it in .env (use a long random string, e.g. `python -c \"import secrets; print(secrets.token_urlsafe(64))\"`)."
+        )
+    if len(secret_key) < 32:
+        raise RuntimeError(
+            "SECRET_KEY is too short (min 32 chars). Generate a strong one: "
+            "`python -c \"import secrets; print(secrets.token_urlsafe(64))\"`."
+        )
+    app.config['SECRET_KEY'] = secret_key
     app.config['GITHUB_CLIENT_ID'] = os.getenv('GITHUB_CLIENT_ID')
     app.config['GITHUB_CLIENT_SECRET'] = os.getenv('GITHUB_CLIENT_SECRET')
     app.config['GITHUB_CALLBACK_URL'] = os.getenv('GITHUB_CALLBACK_URL', 'http://localhost:8080/api/github/callback')
