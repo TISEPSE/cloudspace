@@ -8,17 +8,20 @@ import FilePreviewModal from '../components/FilePreviewModal'
 function PhotoCard({ photo, onClick, displayName }) {
   const token = getAccessToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
+  const [loaded, setLoaded] = useState(false)
 
   return (
     <div
       onClick={() => onClick(photo)}
       className="group relative aspect-square rounded-lg overflow-hidden cursor-pointer border border-slate-200/50 dark:border-border-dark/50 hover:border-primary/40 transition-all"
     >
+      {!loaded && <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-slate-700" />}
       <img
         src={imgUrl}
         alt={photo.name}
-        className="absolute inset-0 w-full h-full object-cover"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
+        onLoad={() => setLoaded(true)}
         onError={e => { e.target.style.display = 'none' }}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
@@ -34,16 +37,19 @@ function PhotoCard({ photo, onClick, displayName }) {
 function MosaicCard({ photo, onClick, displayName }) {
   const token = getAccessToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
+  const [loaded, setLoaded] = useState(false)
   return (
     <div
       onClick={() => onClick(photo)}
-      className="group relative break-inside-avoid mb-2 rounded-lg overflow-hidden cursor-pointer border border-slate-200/50 dark:border-border-dark/50 hover:border-primary/40 transition-all"
+      className={`group relative break-inside-avoid mb-2 rounded-lg overflow-hidden cursor-pointer border border-slate-200/50 dark:border-border-dark/50 hover:border-primary/40 transition-all${!loaded ? ' min-h-[120px]' : ''}`}
     >
+      {!loaded && <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-slate-700" />}
       <img
         src={imgUrl}
         alt={photo.name}
-        className="w-full h-auto block"
+        className={`w-full h-auto block transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
+        onLoad={() => setLoaded(true)}
         onError={e => { e.target.style.display = 'none' }}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
@@ -119,9 +125,10 @@ export default function Gallery() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Galerie</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {photos.length} photo{photos.length !== 1 ? 's' : ''}
-          </p>
+          {loading
+            ? <div className="h-3 w-16 mt-1.5 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
+            : <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
+          }
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-surface-dark rounded-lg p-1">
@@ -151,14 +158,21 @@ export default function Gallery() {
         </div>
       </div>
 
-      {loading && (
-        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
-          <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-          Chargement...
-        </div>
-      )}
-
-      {!loading && photos.length === 0 && (
+      {loading ? (
+        viewMode === 'mosaic' ? (
+          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
+            {[150, 200, 120, 180, 100, 160, 140, 110, 190, 130].map((h, i) => (
+              <div key={i} className="break-inside-avoid mb-2 rounded-lg animate-pulse bg-slate-200 dark:bg-slate-700" style={{ height: h }} />
+            ))}
+          </div>
+        ) : (
+          <div className={`grid ${gridSizes[viewMode]} gap-2`}>
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="aspect-square rounded-lg animate-pulse bg-slate-200 dark:bg-slate-700" />
+            ))}
+          </div>
+        )
+      ) : photos.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
           <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">photo_library</span>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Aucune image</p>
@@ -166,22 +180,18 @@ export default function Gallery() {
             Uploadez des images depuis Mon Drive pour les voir ici.
           </p>
         </div>
-      )}
-
-      {!loading && photos.length > 0 && (
-        viewMode === 'mosaic' ? (
-          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
-            {photos.map(photo => (
-              <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
-            ))}
-          </div>
-        ) : (
-          <div className={`grid ${gridSizes[viewMode]} gap-2`}>
-            {photos.map(photo => (
-              <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
-            ))}
-          </div>
-        )
+      ) : viewMode === 'mosaic' ? (
+        <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
+          {photos.map(photo => (
+            <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
+          ))}
+        </div>
+      ) : (
+        <div className={`grid ${gridSizes[viewMode]} gap-2`}>
+          {photos.map(photo => (
+            <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
+          ))}
+        </div>
       )}
 
       <FilePreviewModal file={selectedPhoto} onClose={() => setSelectedPhoto(null)} />

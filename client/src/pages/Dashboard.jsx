@@ -8,6 +8,10 @@ import ItemDetailsModal from '../components/ItemDetailsModal'
 import MoveItemModal from '../components/MoveItemModal'
 import ShareModal from '../components/ShareModal'
 
+const Sk = ({ className = '', style }) => (
+  <div className={`animate-pulse bg-slate-200 dark:bg-slate-700 rounded ${className}`} style={style} />
+)
+
 function StatCard({ stat }) {
   return (
     <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl p-4">
@@ -56,11 +60,7 @@ function QuickAccessItem({ file, isLast, onAction }) {
       {file.badge && (
         <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">{file.badge}</span>
       )}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1">
-        <FileContextMenu onAction={(action) => onAction(action, file)}>
-          <span className="material-symbols-outlined">more_vert</span>
-        </FileContextMenu>
-      </div>
+      <FileContextMenu onAction={(action) => onAction(action, file)} />
     </div>
   )
 }
@@ -178,6 +178,7 @@ export default function Dashboard() {
   const [quickAccessFiles, setQuickAccessFiles] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [onlineCount, setOnlineCount] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   // Modal state
   const [previewFile, setPreviewFile] = useState(null)
@@ -266,7 +267,7 @@ export default function Dashboard() {
         })))
         setOnlineCount(teamResult.value.online_count)
       }
-    })
+    }).finally(() => setLoading(false))
   }, [])
 
   function handleQuickAction(action, file) {
@@ -309,7 +310,13 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat) => (
+        {loading ? Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl p-4">
+            <Sk className="w-10 h-10 rounded-lg mb-3" />
+            <Sk className="h-7 w-14 mb-2" />
+            <Sk className="h-3 w-28" />
+          </div>
+        )) : stats.map((stat) => (
           <StatCard key={stat.label} stat={stat} />
         ))}
       </div>
@@ -323,39 +330,62 @@ export default function Dashboard() {
             <Link to="/settings" className="text-xs text-primary hover:text-blue-600 font-medium transition-colors">Gérer</Link>
           </div>
 
-          {/* Usage bar */}
-          <div className="flex rounded-full h-3 overflow-hidden mb-5">
-            {storageByType.map((item) => (
-              <div
-                key={item.type}
-                className={`${item.color} transition-all`}
-                style={{ width: `${item.percent}%` }}
-                title={`${item.type}: ${item.size}`}
-              />
-            ))}
-          </div>
-
-          {/* Legend */}
-          <div className="space-y-3 pb-3">
-            {storageByType.map((item) => (
-              <div key={item.type} className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{item.type}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums">{item.size}</span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 w-8 text-right tabular-nums">{item.percent}%</span>
-                </div>
+          {loading ? (
+            <div className="animate-pulse flex flex-col flex-1">
+              <Sk className="h-3 w-full rounded-full mb-5" />
+              <div className="space-y-3 pb-3 flex-1">
+                {[55, 40, 65, 45, 30].map((w, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Sk className="w-2.5 h-2.5 rounded-full" />
+                      <Sk className={`h-3.5`} style={{ width: `${w}px` }} />
+                    </div>
+                    <Sk className="h-3 w-10" />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+              <div className="mt-auto pt-4 border-t border-slate-200 dark:border-border-dark flex items-center justify-between">
+                <Sk className="h-3 w-20" />
+                <Sk className="h-3 w-24" />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Usage bar */}
+              <div className="flex rounded-full h-3 overflow-hidden mb-5">
+                {storageByType.map((item) => (
+                  <div
+                    key={item.type}
+                    className={`${item.color} transition-all`}
+                    style={{ width: `${item.percent}%` }}
+                    title={`${item.type}: ${item.size}`}
+                  />
+                ))}
+              </div>
 
-          {/* Total */}
-          <div className="mt-auto pt-4 border-t border-slate-200 dark:border-border-dark flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total utilisé</span>
-            <span className="text-sm font-bold text-slate-900 dark:text-white">{storageTotal.used} / {storageTotal.limit}</span>
-          </div>
+              {/* Legend */}
+              <div className="space-y-3 pb-3">
+                {storageByType.map((item) => (
+                  <div key={item.type} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{item.type}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums">{item.size}</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 w-8 text-right tabular-nums">{item.percent}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total */}
+              <div className="mt-auto pt-4 border-t border-slate-200 dark:border-border-dark flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total utilisé</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{storageTotal.used} / {storageTotal.limit}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Activity Feed */}
@@ -365,7 +395,17 @@ export default function Dashboard() {
             <Link to="/recent" className="text-xs text-primary hover:text-blue-600 font-medium transition-colors">Tout voir</Link>
           </div>
 
-          {activityFeed.length > 0 ? (
+          {loading ? (
+            <div className="animate-pulse space-y-0">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-border-dark last:border-0">
+                  <Sk className="w-8 h-8 rounded-full flex-shrink-0" />
+                  <Sk className="flex-1 h-3.5 max-w-xs" />
+                  <Sk className="h-3 w-10 flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : activityFeed.length > 0 ? (
             <div className="space-y-0">
               {activityFeed.map((item, index) => (
                 <ActivityItem key={item.id} item={item} isLast={index === activityFeed.length - 1} />
@@ -390,7 +430,19 @@ export default function Dashboard() {
             <Link to="/drive" className="text-xs text-primary hover:text-blue-400 hover:underline font-medium transition-colors">Mon Drive</Link>
           </div>
 
-          {quickAccessFiles.length > 0 ? (
+          {loading ? (
+            <div className="animate-pulse space-y-0">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-border-dark last:border-0">
+                  <Sk className="w-9 h-9 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Sk className="h-3.5 w-2/3" />
+                    <Sk className="h-2.5 w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : quickAccessFiles.length > 0 ? (
             <div className="space-y-0">
               {quickAccessFiles.map((file, index) => (
                 <QuickAccessItem
@@ -417,7 +469,23 @@ export default function Dashboard() {
             <span className="text-xs text-slate-400 dark:text-slate-500">{onlineCount > 0 ? `${onlineCount} en ligne` : ''}</span>
           </div>
 
-          {teamMembers.length > 0 ? (
+          {loading ? (
+            <div className="animate-pulse space-y-0">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-border-dark last:border-0">
+                  <Sk className="w-9 h-9 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Sk className="h-3.5 w-1/2" />
+                    <Sk className="h-2.5 w-1/3" />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <Sk className="h-3.5 w-8 ml-auto" />
+                    <Sk className="h-2.5 w-10 ml-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : teamMembers.length > 0 ? (
             <div className="space-y-0">
               {teamMembers.map((member, index) => (
                 <TeamMemberRow key={member.name} member={member} isLast={index === teamMembers.length - 1} />

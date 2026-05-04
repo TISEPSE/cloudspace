@@ -198,9 +198,7 @@ export default function FileExplorerDetail() {
                     <span className="text-sm text-slate-500 dark:text-slate-400">{file.size}</span>
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <FileContextMenu className={`p-1 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark transition-all ${file.selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                      <span className="material-symbols-outlined text-lg text-slate-500 dark:text-slate-400">more_vert</span>
-                    </FileContextMenu>
+                    <FileContextMenu forceVisible={file.selected} />
                   </td>
                 </tr>
               ))}

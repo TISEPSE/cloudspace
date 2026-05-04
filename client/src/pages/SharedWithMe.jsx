@@ -115,9 +115,7 @@ export default function SharedWithMe() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <FileContextMenu className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="material-symbols-outlined">more_vert</span>
-                    </FileContextMenu>
+                    <FileContextMenu hideUntilHover={false} />
                   </td>
                 </tr>
               ))}

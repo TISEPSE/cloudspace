@@ -66,23 +66,23 @@ export default function ItemDetailsModal({ itemId, onClose }) {
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {loading ? (
-            <div className="flex items-center justify-center py-16 gap-2 text-slate-400 text-sm">
-              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>Loading…
+            <div className="px-6 pt-5 pb-4 animate-pulse">
+              <div className="flex items-center gap-4 pb-4 border-b border-slate-100 dark:border-border-dark mb-2">
+                <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-2/5 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-3 w-1/4 bg-slate-200 dark:bg-slate-700 rounded" />
+                </div>
+              </div>
+              {[80, 60, 72, 55, 65, 50].map((w, i) => (
+                <div key={i} className="flex items-start gap-4 py-2.5 border-b border-slate-100 dark:border-border-dark last:border-0">
+                  <div className="w-24 h-3 bg-slate-200 dark:bg-slate-700 rounded flex-shrink-0" />
+                  <div className={`h-3 bg-slate-200 dark:bg-slate-700 rounded`} style={{ width: `${w}%` }} />
+                </div>
+              ))}
             </div>
           ) : data ? (
             <>
-              {data.sha1 && (
-                <div className="mx-5 mt-5 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200/60 dark:border-green-500/20 flex items-start gap-3">
-                  <span className="material-symbols-outlined text-green-500 text-xl flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-                  <div>
-                    <p className="text-xs font-semibold text-green-700 dark:text-green-400">Digital signature verified.</p>
-                    <p className="text-xs text-green-600/80 dark:text-green-500/80 mt-0.5">This file was securely imported by {data.owner_email}.</p>
-                  </div>
-                </div>
-              )}
 
               <div className="px-6 pt-5 pb-4 flex items-center gap-4 border-b border-slate-100 dark:border-border-dark">
                 <div className={`w-12 h-12 rounded-xl ${data.icon_bg} flex items-center justify-center flex-shrink-0`}>

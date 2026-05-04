@@ -166,7 +166,7 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked }) {
   )
 }
 
-export default function FileContextMenu({ children, className, onAction, isFolder, isLocked }) {
+export default function FileContextMenu({ children, className, onAction, isFolder, isLocked, hideUntilHover = true, forceVisible = false }) {
   const [open, setOpen] = useState(false)
   const [anchorRect, setAnchorRect] = useState(null)
   const btnRef = useRef(null)
@@ -182,15 +182,23 @@ export default function FileContextMenu({ children, className, onAction, isFolde
     }
   }, [open])
 
+  const opacityClass = forceVisible ? 'opacity-100' : hideUntilHover ? 'opacity-0 group-hover:opacity-100' : ''
+  const defaultClass = [
+    'w-7 h-7 flex items-center justify-center rounded-md flex-shrink-0',
+    'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200',
+    'hover:bg-slate-100 dark:hover:bg-border-dark transition-all',
+    opacityClass,
+  ].filter(Boolean).join(' ')
+
   return (
     <>
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className={className || 'p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-md transition-colors'}
+        className={className || defaultClass}
       >
         {children || (
-          <span className="material-symbols-outlined">more_vert</span>
+          <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
         )}
       </button>
 

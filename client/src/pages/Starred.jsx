@@ -27,7 +27,7 @@ function FolderRow({ folder }) {
           {folder.items_count != null ? `${folder.items_count} éléments` : '--'}
         </p>
       </div>
-      <FileContextMenu className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0" />
+      <FileContextMenu />
     </div>
   )
 }
@@ -45,9 +45,7 @@ function FileCard({ file }) {
             {file.formatted_size} · {file.relative_time}
           </p>
         </div>
-        <FileContextMenu className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-          <span className="material-symbols-outlined text-[16px]">more_vert</span>
-        </FileContextMenu>
+        <FileContextMenu />
       </div>
     </div>
   )
@@ -81,7 +79,7 @@ function FileRowList({ file }) {
         <span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_size || '--'}</span>
       </td>
       <td className="px-5 py-3 text-right">
-        <FileContextMenu className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+        <FileContextMenu />
       </td>
     </tr>
   )

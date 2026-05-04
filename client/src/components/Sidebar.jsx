@@ -86,52 +86,62 @@ export default function Sidebar() {
           </div>
 
           <div className="flex flex-col gap-0.5">
-            {/* Mon Drive */}
-            <div
-              onClick={() => navigate('/drive')}
-              title="Mon Drive"
-              className={[
-                'flex items-center rounded-lg text-[13px] font-medium transition-colors cursor-pointer',
-                isDriveActive
-                  ? 'bg-slate-100 dark:bg-surface-dark text-primary dark:text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark',
-              ].join(' ')}
-            >
-              <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                <span className={`material-symbols-outlined ${isDriveActive ? 'fill-current' : ''}`}>folder</span>
-              </span>
-              <span className={`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>Mon Drive</span>
-            </div>
-
-            {/* Séparateur */}
-            <div className="my-1 border-t border-slate-100 dark:border-border-dark" />
-
-            {/* Items de navigation */}
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path
+            {(() => {
+              const renderNavItem = (item) => {
+                const isActive = location.pathname === item.path
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    title={item.label}
+                    className={[
+                      'flex items-center rounded-lg text-[13px] font-medium transition-colors',
+                      isActive
+                        ? 'bg-slate-100 dark:bg-surface-dark text-primary dark:text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark',
+                    ].join(' ')}
+                  >
+                    <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                      <span className={[
+                        'material-symbols-outlined',
+                        isActive ? 'fill-current' : '',
+                        item.path === '/starred' && isActive ? 'text-amber-500' : '',
+                      ].join(' ')}>{item.icon}</span>
+                    </span>
+                    <span className={`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>{item.label}</span>
+                  </NavLink>
+                )
+              }
               return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  title={item.label}
-                  className={[
-                    'flex items-center rounded-lg text-[13px] font-medium transition-colors',
-                    isActive
-                      ? 'bg-slate-100 dark:bg-surface-dark text-primary dark:text-white'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark',
-                  ].join(' ')}
-                >
-                  <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                    <span className={[
-                      'material-symbols-outlined',
-                      isActive ? 'fill-current' : '',
-                      item.path === '/starred' && isActive ? 'text-amber-500' : '',
-                    ].join(' ')}>{item.icon}</span>
-                  </span>
-                  <span className={`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>{item.label}</span>
-                </NavLink>
+                <>
+                  {/* Tableau de bord (solo) */}
+                  {renderNavItem(navItems[0])}
+
+                  {/* Séparateur */}
+                  <div className="my-1 border-t border-slate-100 dark:border-border-dark" />
+
+                  {/* Mon Drive */}
+                  <div
+                    onClick={() => navigate('/drive')}
+                    title="Mon Drive"
+                    className={[
+                      'flex items-center rounded-lg text-[13px] font-medium transition-colors cursor-pointer',
+                      isDriveActive
+                        ? 'bg-slate-100 dark:bg-surface-dark text-primary dark:text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark',
+                    ].join(' ')}
+                  >
+                    <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                      <span className={`material-symbols-outlined ${isDriveActive ? 'fill-current' : ''}`}>folder</span>
+                    </span>
+                    <span className={`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>Mon Drive</span>
+                  </div>
+
+                  {/* Reste des items */}
+                  {navItems.slice(1).map(renderNavItem)}
+                </>
               )
-            })}
+            })()}
           </div>
         </nav>
 

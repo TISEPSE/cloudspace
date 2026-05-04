@@ -336,20 +336,9 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
 }
 
 
-function DriveLoadingSkeleton() {
+function DriveContentSkeleton() {
   return (
-    <div className="flex-1 overflow-y-auto p-6 animate-pulse">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-24 h-4 bg-slate-200 dark:bg-border-dark rounded" />
-          <div className="w-4 h-4 bg-slate-200 dark:bg-border-dark rounded" />
-          <div className="w-16 h-4 bg-slate-200 dark:bg-border-dark rounded" />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-28 h-8 bg-slate-200 dark:bg-border-dark rounded-lg" />
-          <div className="w-20 h-8 bg-slate-200 dark:bg-border-dark rounded-lg" />
-        </div>
-      </div>
+    <div className="animate-pulse">
       <div className="mb-8">
         <div className="w-16 h-3 bg-slate-200 dark:bg-border-dark rounded mb-3" />
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -440,14 +429,7 @@ function FolderCard({ folder, onOpen, onAction }) {
         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{folder.name}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">{folder.items_count} items</p>
       </div>
-      <FileContextMenu
-        isFolder
-        isLocked={folder.is_locked}
-        onAction={(id) => onAction(id, folder)}
-        className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-      >
-        <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
-      </FileContextMenu>
+      <FileContextMenu isFolder isLocked={folder.is_locked} onAction={(id) => onAction(id, folder)} />
     </div>
   )
 }
@@ -456,6 +438,7 @@ function FileCard({ file, onPreview, onAction, showExt }) {
   const token = getAccessToken()
   const isImage = file.has_content && file.mime_type?.startsWith('image/')
   const isVideo = file.has_content && file.mime_type?.startsWith('video/')
+  const [imgLoaded, setImgLoaded] = useState(false)
   const displayName = formatDisplayName(file.name, showExt)
   return (
     <div
@@ -463,9 +446,7 @@ function FileCard({ file, onPreview, onAction, showExt }) {
       className="group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
     >
       <div className={`aspect-[4/3] ${file.icon_bg} rounded-md mb-2 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-border-dark relative`}>
-        {isImage ? (
-          <img src={`/api/files/${file.id}/download?inline=true&token=${token}`} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-        ) : isVideo ? (
+        {isVideo ? (
           <>
             <VideoThumbnail
               src={`/api/files/${file.id}/download?inline=true&token=${token}`}
@@ -480,15 +461,21 @@ function FileCard({ file, onPreview, onAction, showExt }) {
         ) : (
           <span className={`material-symbols-outlined text-3xl ${file.icon_color} opacity-80 group-hover:scale-110 transition-transform duration-300`}>{file.icon}</span>
         )}
+        {isImage && (
+          <img
+            src={`/api/files/${file.id}/download?inline=true&token=${token}`}
+            alt={file.name}
+            onLoad={() => setImgLoaded(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        )}
       </div>
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{file.formatted_size} &bull; {file.formatted_date}</p>
         </div>
-        <FileContextMenu onAction={(id) => onAction(id, file)} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-          <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
-        </FileContextMenu>
+        <FileContextMenu onAction={(id) => onAction(id, file)} />
       </div>
     </div>
   )
@@ -593,14 +580,7 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
               <td className="px-5 py-3 hidden md:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">-</span></td>
               <td className="px-5 py-3 hidden sm:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">-</span></td>
               <td className="px-5 py-3 text-right">
-                <FileContextMenu
-                  isFolder
-                  isLocked={folder.is_locked}
-                  onAction={(id) => onFolderAction(id, folder)}
-                  className="w-8 h-8 inline-flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <span className="material-symbols-outlined text-[18px] leading-none">more_vert</span>
-                </FileContextMenu>
+                <FileContextMenu isFolder isLocked={folder.is_locked} onAction={(id) => onFolderAction(id, folder)} />
               </td>
             </tr>
           ))}
@@ -617,12 +597,7 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
               <td className="px-5 py-3 hidden md:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_date}</span></td>
               <td className="px-5 py-3 hidden sm:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_size}</span></td>
               <td className="px-5 py-3 text-right">
-                <FileContextMenu
-                  onAction={(id) => onFileAction(id, file)}
-                  className="w-8 h-8 inline-flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-border-dark rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <span className="material-symbols-outlined text-[18px] leading-none">more_vert</span>
-                </FileContextMenu>
+                <FileContextMenu onAction={(id) => onFileAction(id, file)} />
               </td>
             </tr>
           ))}
@@ -874,12 +849,6 @@ export default function MyDrive() {
     setTrashTarget(null)
   }, [trashTarget, fetchContents])
 
-  if (!ready && showSkeleton) {
-    return <DriveLoadingSkeleton />
-  }
-
-  if (!ready) return null
-
   return (
     <div
       ref={dropZoneRef}
@@ -892,7 +861,7 @@ export default function MyDrive() {
       {/* Drop Zone Overlay */}
       <DropZoneOverlay isDragging={isDragging} dragFileCount={dragFileCount} />
 
-      {/* Toolbar */}
+      {/* Toolbar — toujours visible : le fil d'Ariane ne clignote plus à la navigation */}
       <DriveToolbar
         breadcrumbs={breadcrumbs}
         view={view}
@@ -901,6 +870,8 @@ export default function MyDrive() {
         fileInputRef={fileInputRef}
         onFileSelect={handleFileInputChange}
       />
+
+      {!ready ? (showSkeleton ? <DriveContentSkeleton /> : null) : (<>
 
       {/* Empty state — drive vide */}
       {folders.length === 0 && files.length === 0 && (
@@ -971,6 +942,8 @@ export default function MyDrive() {
           )}
         </section>
       )}
+
+      </>)}
 
       {/* Create Folder Modal */}
       <CreateFolderModal
