@@ -676,6 +676,9 @@ def list_recent():
             'icon_color': f.icon_color,
             'icon_bg': f.icon_bg or 'bg-slate-50',
             'activity': activity_str,
+            'action': act.action,
+            'time': time_str if act.created_at else '',
+            'parent_id': f.parent_id,
             'updated_at': f.updated_at.isoformat() + 'Z' if f.updated_at else None,
         })
 

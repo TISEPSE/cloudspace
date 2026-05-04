@@ -30,16 +30,24 @@ function StatCard({ stat }) {
 }
 
 function ActivityItem({ item, isLast }) {
+  const fileHref = item.target_id
+    ? (item.target_parent_id ? `/drive/folder/${item.target_parent_id}` : '/drive')
+    : null
+
   return (
     <div className={`flex items-center gap-3 py-3 ${!isLast ? 'border-b border-slate-100 dark:border-border-dark' : ''}`}>
-      <div className={`w-8 h-8 rounded-full ${item.color} flex items-center justify-center flex-shrink-0`}>
-        <span className="text-[10px] font-bold text-white">{item.initials}</span>
+      <div className={`w-8 h-8 rounded-full ${item.color} flex items-center justify-center flex-shrink-0 overflow-hidden`}>
+        {item.avatar_url
+          ? <img src={item.avatar_url} alt="" className="w-full h-full object-cover" />
+          : <span className="text-[10px] font-bold text-white">{item.initials}</span>}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-slate-700 dark:text-slate-300 truncate">
           <span className="font-medium text-slate-900 dark:text-white">{item.user}</span>
           {' '}{item.action}{' '}
-          <span className="font-medium text-primary">{item.target}</span>
+          {fileHref
+            ? <Link to={fileHref} state={{ openFileId: item.target_id }} className="font-medium text-primary hover:underline">{item.target}</Link>
+            : <span className="font-medium text-primary">{item.target}</span>}
         </p>
       </div>
       <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{item.time}</span>
@@ -232,8 +240,11 @@ export default function Dashboard() {
           user: a.user.name,
           initials: a.user.initials,
           color: a.user.color,
+          avatar_url: a.user.avatar_url || null,
           action: a.action,
           target: a.target,
+          target_id: a.target_id || null,
+          target_parent_id: a.target_parent_id || null,
           time: a.time,
         })))
       }

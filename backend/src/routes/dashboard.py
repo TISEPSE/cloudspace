@@ -108,10 +108,12 @@ def dashboard_activity():
                 'name': display_name,
                 'initials': initials,
                 'color': USER_COLORS.get(user.id, 'bg-slate-500'),
+                'avatar_url': user.avatar_url,
             },
             'action': ACTION_VERBS.get(act.action, act.action),
             'target': file_obj.name if file_obj else 'a file',
             'target_id': act.file_id,
+            'target_parent_id': file_obj.parent_id if file_obj else None,
             'time': format_relative_time(act.created_at),
             'created_at': act.created_at.isoformat() + 'Z' if act.created_at else None,
         })

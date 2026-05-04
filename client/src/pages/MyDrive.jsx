@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
 import FilePreviewModal from '../components/FilePreviewModal'
 import ItemDetailsModal from '../components/ItemDetailsModal'
@@ -610,6 +610,7 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
 export default function MyDrive() {
   const navigate = useNavigate()
   const { folderId } = useParams()
+  const location = useLocation()
   const [view, setView] = useState(() => localStorage.getItem('cloudspace-view-mode') || 'grid')
   const [isDragging, setIsDragging] = useState(false)
   const [dragFileCount, setDragFileCount] = useState(0)
@@ -667,6 +668,17 @@ export default function MyDrive() {
     setShowSkeleton(false)
     fetchContents()
   }, [fetchContents])
+
+  useEffect(() => {
+    if (!ready) return
+    const openFileId = location.state?.openFileId
+    if (!openFileId) return
+    const file = files.find(f => f.id === openFileId)
+    if (file) {
+      setPreviewFile(file)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh drive when uploads complete
   const prevDoneCount = useRef(0)

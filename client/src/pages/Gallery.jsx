@@ -78,7 +78,7 @@ const gridSizes = {
 export default function Gallery() {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState('medium')
+  const [viewMode, setViewMode] = useLocalPref('cloudspace_gallery_view', 'medium')
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const { uploadFiles, queue } = useUpload()

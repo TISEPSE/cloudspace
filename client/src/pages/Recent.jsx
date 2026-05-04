@@ -1,35 +1,56 @@
 import { useState, useEffect } from 'react'
-import FileContextMenu from '../components/FileContextMenu'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
 
-function FileRow({ file }) {
+const ACTION_LABELS = {
+  file_uploaded:   'a importé',
+  file_edited:     'a modifié',
+  file_viewed:     'a consulté',
+  file_renamed:    'a renommé',
+  file_starred:    'a mis en favori',
+  file_downloaded: 'a téléchargé',
+  file_shared:     'a partagé',
+  file_moved:      'a déplacé',
+  file_restored:   'a restauré',
+  file_copied:     'a copié',
+}
+
+function FileRow({ file, currentUser, isLast }) {
+  const fileHref = file.parent_id ? `/drive/folder/${file.parent_id}` : '/drive'
+  const initials = currentUser
+    ? (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '')
+    : '?'
+  const actionLabel = ACTION_LABELS[file.action] || 'a accédé à'
+
   return (
-    <tr className="group hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors cursor-pointer">
-      <td className="px-5 py-3 w-[45%]">
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center ${file.icon_bg} rounded-lg`}>
-            <span className={`material-symbols-outlined text-[16px] ${file.icon_color}`}>{file.icon}</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{file.name}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 md:hidden">{file.activity}</p>
-          </div>
-        </div>
-      </td>
-      <td className="px-5 py-3 w-[25%] hidden md:table-cell">
-        <span className="text-sm text-slate-500 dark:text-slate-400">{file.activity}</span>
-      </td>
-      <td className="px-5 py-3 w-[20%] hidden sm:table-cell">
-        <span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_size || '--'}</span>
-      </td>
-      <td className="px-5 py-3 w-[10%] text-right">
-        <FileContextMenu />
-      </td>
-    </tr>
+    <div className={`flex items-center gap-3 py-3 ${!isLast ? 'border-b border-slate-100 dark:border-border-dark' : ''}`}>
+      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {currentUser?.avatar_url
+          ? <img src={currentUser.avatar_url} alt="" className="w-full h-full object-cover" />
+          : <span className="text-[10px] font-bold text-white">{initials}</span>}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-slate-700 dark:text-slate-300 truncate">
+          <span className="font-medium text-slate-900 dark:text-white">Vous</span>
+          {' '}{actionLabel}{' '}
+          <Link
+            to={fileHref}
+            state={{ openFileId: file.id }}
+            className="font-medium text-primary hover:underline"
+          >
+            {file.name}
+          </Link>
+        </p>
+      </div>
+      {file.time && (
+        <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{file.time}</span>
+      )}
+    </div>
   )
 }
 
-function DateGroup({ group }) {
+function DateGroup({ group, currentUser }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
@@ -37,20 +58,10 @@ function DateGroup({ group }) {
         <div className="flex-1 h-px bg-slate-200 dark:bg-border-dark" />
         <span className="text-xs text-slate-400">{group.files.length} fichier{group.files.length > 1 ? 's' : ''}</span>
       </div>
-      <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-[#151e26] border-b border-slate-200 dark:border-border-dark">
-            <tr>
-              <th className="px-5 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-[45%]">Nom</th>
-              <th className="px-5 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-[25%] hidden md:table-cell">Activité</th>
-              <th className="px-5 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-[20%] hidden sm:table-cell">Taille</th>
-              <th className="px-5 py-2.5 w-[10%]" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-border-dark">
-            {group.files.map(f => <FileRow key={f.id} file={f} />)}
-          </tbody>
-        </table>
+      <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark px-4">
+        {group.files.map((f, i) => (
+          <FileRow key={f.id} file={f} currentUser={currentUser} isLast={i === group.files.length - 1} />
+        ))}
       </div>
     </div>
   )
@@ -59,6 +70,7 @@ function DateGroup({ group }) {
 export default function Recent() {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     apiFetch('/api/files/recent')
@@ -91,7 +103,9 @@ export default function Recent() {
         </div>
       )}
 
-      {!loading && groups.map(group => <DateGroup key={group.date} group={group} />)}
+      {!loading && groups.map(group => (
+        <DateGroup key={group.date} group={group} currentUser={user} />
+      ))}
     </div>
   )
 }

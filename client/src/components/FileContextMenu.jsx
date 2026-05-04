@@ -69,7 +69,7 @@ function getActions(isFolder, isLocked) {
     { id: 'share', label: 'Partager', icon: 'share' },
     { id: 'download', label: isFolder ? 'Télécharger en ZIP' : 'Télécharger', icon: isFolder ? 'folder_zip' : 'download', ...(!isFolder ? { shortcut: 'Ctrl+D' } : {}) },
     { type: 'divider' },
-    { id: 'trash', label: 'Mettre à la corbeille', icon: 'delete', danger: true, shortcut: 'Suppr' },
+    { id: 'trash', label: 'Supprimer', icon: 'delete', danger: true, shortcut: 'Suppr' },
   ]
 }
 
