@@ -611,6 +611,8 @@ def list_starred():
         child_counts = {parent_id: count for parent_id, count in rows}
 
     def serialize(f):
+        import os as _os
+        has_content = bool(f.storage_path and _os.path.exists(f.storage_path))
         return {
             'id': f.id,
             'name': f.name,
@@ -623,8 +625,10 @@ def list_starred():
             'icon_bg': f.icon_bg or ('bg-yellow-50 dark:bg-yellow-500/10' if f.is_folder else 'bg-slate-50'),
             'is_starred': f.is_starred,
             'is_locked': f.is_locked,
+            'has_content': has_content,
             'updated_at': f.updated_at.isoformat() + 'Z' if f.updated_at else None,
             'relative_time': format_relative_time(f.updated_at) if f.updated_at else None,
+            'formatted_date': format_relative_time(f.updated_at) if f.updated_at else None,
             'items_count': child_counts.get(f.id, 0) if f.is_folder else None,
         }
 

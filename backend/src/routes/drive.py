@@ -93,6 +93,7 @@ def drive_contents():
                 'is_starred': item.is_starred,
                 'is_locked': item.is_locked,
                 'has_content': has_content,
+                'parent_id': item.parent_id,
                 'updated_at': item.updated_at.isoformat() + 'Z' if item.updated_at else None,
                 'formatted_date': format_relative_time(item.updated_at),
             })

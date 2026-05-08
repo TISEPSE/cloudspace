@@ -60,6 +60,13 @@ export default function FilePreviewModal({ file, onClose }) {
   const [showExt] = useLocalPref('cloudspace_show_extensions', true)
 
   useEffect(() => {
+    if (!file) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [file, onClose])
+
+  useEffect(() => {
     if (!file) { setTextContent(null); return }
     const mime = file.mime_type || ''
     const isText = file.has_content && (mime === 'text/plain' || mime === 'text/csv' || mime === 'text/markdown' || mime === 'application/json')
@@ -185,10 +192,10 @@ export default function FilePreviewModal({ file, onClose }) {
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-colors"
               >
                 <span className="material-symbols-outlined text-lg">download</span>
-                Download
+                Télécharger
               </a>
             ) : (
-              <p className="text-xs text-slate-500">No preview available (seed data)</p>
+              <p className="text-xs text-slate-500">Aperçu non disponible</p>
             )}
           </div>
         )}

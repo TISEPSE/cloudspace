@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
 import { getMediaToken } from '../lib/mediaToken'
 import { useUpload } from '../contexts/UploadContext'
@@ -105,6 +105,7 @@ export default function Gallery() {
     e.target.value = ''
   }
 
+  const closePhoto = useCallback(() => setSelectedPhoto(null), [])
   const selectedIndex = selectedPhoto ? photos.findIndex(p => p.id === selectedPhoto.id) : -1
 
   // Navigation prev/next dans le viewer (flèches clavier)
@@ -120,14 +121,11 @@ export default function Gallery() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Galerie</h2>
-          {loading
-            ? <div className="h-3 w-16 mt-1.5 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
-            : <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
-          }
-        </div>
+      <div className="flex items-center gap-3 mb-6">
+        {loading
+          ? <div className="h-3 w-16 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
+          : <p className="text-sm text-slate-500 dark:text-slate-400">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
+        }
         <div className="flex items-center gap-2">
           {/* Slider de taille */}
           <div className={`flex items-center gap-1.5 transition-opacity ${mosaic ? 'opacity-30 pointer-events-none' : ''}`}>
@@ -203,7 +201,7 @@ export default function Gallery() {
         </div>
       )}
 
-      <FilePreviewModal file={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
+      <FilePreviewModal file={selectedPhoto} onClose={closePhoto} />
     </div>
   )
 }

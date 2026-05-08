@@ -188,6 +188,12 @@ function RenameModal({ file, onClose, onConfirm }) {
     }
   }, [file, isFolder])
 
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
   if (!file) return null
 
   const handleSubmit = (e) => {
@@ -414,11 +420,30 @@ function DropZoneOverlay({ isDragging, dragFileCount }) {
   )
 }
 
-function FolderCard({ folder, onOpen, onAction }) {
+function FolderCard({ folder, onOpen, onAction, onHover, onItemDragStart, onItemDragEnd, isGhost, draggedItem, onDropOnFolder }) {
+  const [isDragOver, setIsDragOver] = useState(false)
+  const canDrop = draggedItem && draggedItem.id !== folder.id
+
   return (
     <div
+      draggable="true"
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/x-cloudspace-item', folder.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setTimeout(() => onItemDragStart({ ...folder, is_folder: true }), 0)
+      }}
+      onDragEnd={() => { onItemDragEnd(); setIsDragOver(false) }}
+      onDragOver={(e) => { if (canDrop) { e.preventDefault(); e.stopPropagation() } }}
+      onDragEnter={(e) => { if (!canDrop) return; e.preventDefault(); e.stopPropagation(); setIsDragOver(true) }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false) }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); if (canDrop) onDropOnFolder(folder.id) }}
       onClick={() => onOpen(folder)}
-      className="flex items-center py-3 px-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-pointer transition-colors shadow-sm group"
+      onMouseEnter={() => onHover({ ...folder, is_folder: true })}
+      onMouseLeave={() => onHover(null)}
+      className={`flex items-center py-3 px-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-grab transition-all shadow-sm group
+        ${isGhost ? 'opacity-40' : ''}
+        ${isDragOver ? 'ring-2 ring-primary bg-primary/5 dark:bg-primary/10 scale-[1.02]' : ''}
+      `}
     >
       <div className="relative flex items-center justify-center mr-2 flex-shrink-0">
         <span className={`material-symbols-outlined text-2xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
@@ -429,12 +454,15 @@ function FolderCard({ folder, onOpen, onAction }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{folder.name}</p>
       </div>
-      <FileContextMenu isFolder isLocked={folder.is_locked} onAction={(id) => onAction(id, folder)} />
+      {folder.is_starred && (
+        <span className="material-symbols-outlined text-[14px] text-amber-400 mr-1 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+      )}
+      <FileContextMenu isFolder isLocked={folder.is_locked} isStarred={folder.is_starred} onAction={(id) => onAction(id, folder)} />
     </div>
   )
 }
 
-function FileCard({ file, onPreview, onAction, showExt }) {
+function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart, onItemDragEnd, isGhost }) {
   const token = getMediaToken()
   const isImage = file.has_content && file.mime_type?.startsWith('image/')
   const isVideo = file.has_content && file.mime_type?.startsWith('video/')
@@ -442,8 +470,17 @@ function FileCard({ file, onPreview, onAction, showExt }) {
   const displayName = formatDisplayName(file.name, showExt)
   return (
     <div
+      draggable="true"
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/x-cloudspace-item', file.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setTimeout(() => onItemDragStart({ ...file, is_folder: false }), 0)
+      }}
+      onDragEnd={onItemDragEnd}
       onClick={() => onPreview(file)}
-      className="group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
+      onMouseEnter={() => onHover({ ...file, is_folder: false })}
+      onMouseLeave={() => onHover(null)}
+      className={`group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-grab ${isGhost ? 'opacity-40' : ''}`}
     >
       <div className={`aspect-[4/3] ${file.icon_bg} rounded-md mb-2 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-border-dark relative`}>
         {isVideo ? (
@@ -469,51 +506,66 @@ function FileCard({ file, onPreview, onAction, showExt }) {
             className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         )}
+        {file.is_starred && (
+          <div className="absolute top-1.5 right-1.5 z-10">
+            <span className="material-symbols-outlined text-[14px] text-amber-400 drop-shadow" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+          </div>
+        )}
       </div>
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{file.formatted_size} &bull; {file.formatted_date}</p>
         </div>
-        <FileContextMenu onAction={(id) => onAction(id, file)} />
+        <FileContextMenu isStarred={file.is_starred} onAction={(id) => onAction(id, file)} />
       </div>
     </div>
   )
 }
 
-function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect }) {
+function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect, draggedItem, onDropOnFolder }) {
+  const [dragOverCrumbId, setDragOverCrumbId] = useState(null)
+
   return (
-    <div className="flex items-center justify-between mb-6">
-      <nav aria-label="Breadcrumb" className="flex">
-        <ol className="inline-flex items-center space-x-0.5">
-          {breadcrumbs.map((crumb, index) => {
-            const isLast = index === breadcrumbs.length - 1
-            if (crumb.id === null) {
-              return (
-                <li key="root" className="inline-flex items-center">
-                  {isLast ? (
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Mon Drive</span>
-                  ) : (
-                    <Link to="/drive" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white transition-colors">
+    <div className={`flex items-center mb-6 ${breadcrumbs.length > 1 ? 'justify-between' : 'gap-2'}`}>
+      {breadcrumbs.length > 1 && (
+        <nav aria-label="Breadcrumb" className="flex">
+          <ol className="inline-flex items-center space-x-0.5">
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1
+              const crumbKey = crumb.id ?? '__root__'
+              const isDragOver = !isLast && dragOverCrumbId === crumbKey
+              const isAppDrag = (e) => [...e.dataTransfer.types].includes('application/x-cloudspace-item')
+              const dragHandlers = !isLast ? {
+                onDragOver: (e) => { if (!isAppDrag(e)) return; e.preventDefault(); e.stopPropagation() },
+                onDragEnter: (e) => { if (!isAppDrag(e)) return; e.preventDefault(); e.stopPropagation(); setDragOverCrumbId(crumbKey) },
+                onDragLeave: (e) => { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) setDragOverCrumbId(null) },
+                onDrop: (e) => { e.preventDefault(); e.stopPropagation(); setDragOverCrumbId(null); onDropOnFolder(crumb.id) },
+              } : {}
+
+              if (crumb.id === null) {
+                return (
+                  <li key="root" className="inline-flex items-center" {...dragHandlers}>
+                    <Link to="/drive" className={`inline-flex items-center text-sm font-medium transition-colors px-1.5 py-0.5 rounded-md ${isDragOver ? 'text-primary bg-primary/10 ring-2 ring-primary/40' : 'text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white'}`}>
                       Mon Drive
                     </Link>
+                  </li>
+                )
+              }
+              return (
+                <li key={crumb.id} className="inline-flex items-center" {...dragHandlers}>
+                  <span className="material-symbols-outlined text-slate-400 text-[16px] mx-0.5">chevron_right</span>
+                  {isLast ? (
+                    <span className="text-base font-semibold text-slate-900 dark:text-white">{crumb.name}</span>
+                  ) : (
+                    <Link to={`/drive/folder/${crumb.id}`} className={`text-sm font-medium transition-colors px-1.5 py-0.5 rounded-md ${isDragOver ? 'text-primary bg-primary/10 ring-2 ring-primary/40' : 'text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white'}`}>{crumb.name}</Link>
                   )}
                 </li>
               )
-            }
-            return (
-              <li key={crumb.id} className="inline-flex items-center">
-                <span className="material-symbols-outlined text-slate-400 text-[16px] mx-0.5">chevron_right</span>
-                {isLast ? (
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{crumb.name}</span>
-                ) : (
-                  <Link to={`/drive/folder/${crumb.id}`} className="text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white transition-colors">{crumb.name}</Link>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
+            })}
+          </ol>
+        </nav>
+      )}
 
       <div className="flex items-center gap-2">
         <button onClick={onNewFolder} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary transition-colors">
@@ -548,7 +600,8 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
   )
 }
 
-function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileAction, onFolderAction, showExt }) {
+function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onHover, onFileAction, onFolderAction, showExt, onItemDragStart, onItemDragEnd, draggedItem, onDropOnFolder }) {
+  const [dragOverId, setDragOverId] = useState(null)
   return (
     <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -562,7 +615,27 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-border-dark">
           {folders.map((folder) => (
-            <tr key={folder.id} onClick={() => onFolderOpen(folder)} className="group hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors cursor-pointer">
+            <tr
+              key={folder.id}
+              draggable="true"
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/x-cloudspace-item', folder.id)
+                e.dataTransfer.effectAllowed = 'move'
+                setTimeout(() => onItemDragStart({ ...folder, is_folder: true }), 0)
+              }}
+              onDragEnd={() => { onItemDragEnd(); setDragOverId(null) }}
+              onDragOver={(e) => { if (draggedItem && draggedItem.id !== folder.id) { e.preventDefault(); e.stopPropagation() } }}
+              onDragEnter={(e) => { if (!draggedItem || draggedItem.id === folder.id) return; e.preventDefault(); e.stopPropagation(); setDragOverId(folder.id) }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverId(null) }}
+              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverId(null); if (draggedItem && draggedItem.id !== folder.id) onDropOnFolder(folder.id) }}
+              onClick={() => onFolderOpen(folder)}
+              onMouseEnter={() => onHover({ ...folder, is_folder: true })}
+              onMouseLeave={() => onHover(null)}
+              className={`group hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors cursor-grab
+                ${dragOverId === folder.id ? 'ring-2 ring-inset ring-primary bg-primary/5 dark:bg-primary/10' : ''}
+                ${draggedItem?.id === folder.id ? 'opacity-40' : ''}
+              `}
+            >
               <td className="px-5 py-3">
                 <div className="flex items-center gap-3">
                   <div className="relative flex-shrink-0">
@@ -585,7 +658,20 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onFileA
             </tr>
           ))}
           {files.map((file) => (
-            <tr key={file.id} onClick={() => onFilePreview(file)} className="group hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors cursor-pointer">
+            <tr
+              key={file.id}
+              draggable="true"
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/x-cloudspace-item', file.id)
+                e.dataTransfer.effectAllowed = 'move'
+                setTimeout(() => onItemDragStart({ ...file, is_folder: false }), 0)
+              }}
+              onDragEnd={onItemDragEnd}
+              onClick={() => onFilePreview(file)}
+              onMouseEnter={() => onHover({ ...file, is_folder: false })}
+              onMouseLeave={() => onHover(null)}
+              className={`group hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors cursor-grab ${draggedItem?.id === file.id ? 'opacity-40' : ''}`}
+            >
               <td className="px-5 py-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg ${file.icon_bg} flex items-center justify-center flex-shrink-0`}>
@@ -614,6 +700,7 @@ export default function MyDrive() {
   const [view, setView] = useState(() => localStorage.getItem('cloudspace-view-mode') || 'grid')
   const [isDragging, setIsDragging] = useState(false)
   const [dragFileCount, setDragFileCount] = useState(0)
+  const [draggedItem, setDraggedItem] = useState(null)
   const [folders, setFolders] = useState([])
   const [files, setFiles] = useState([])
   const [breadcrumbs, setBreadcrumbs] = useState([{ id: null, name: 'My Drive' }])
@@ -632,6 +719,8 @@ export default function MyDrive() {
   const dragCounterRef = useRef(0)
   const dropZoneRef = useRef(null)
   const fileInputRef = useRef(null)
+  const hoveredItemRef = useRef(null)
+  const setHoveredItem = useCallback((item) => { hoveredItemRef.current = item }, [])
   const { uploadFiles, queue, setCurrentFolderId } = useUpload()
   const [showExt] = useLocalPref('cloudspace_show_extensions', true)
 
@@ -691,8 +780,9 @@ export default function MyDrive() {
   }, [queue, fetchContents])
 
   const handleDragEnter = useCallback((e) => {
-    e.preventDefault()
     e.stopPropagation()
+    const isOSDrag = [...e.dataTransfer.types].some(t => t.toLowerCase() === 'files')
+    if (!isOSDrag) return
     dragCounterRef.current++
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
       setIsDragging(true)
@@ -703,12 +793,37 @@ export default function MyDrive() {
   const handleDragLeave = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
+    const isOSDrag = [...e.dataTransfer.types].some(t => t.toLowerCase() === 'files')
+    if (!isOSDrag) return
     dragCounterRef.current--
     if (dragCounterRef.current === 0) {
       setIsDragging(false)
       setDragFileCount(0)
     }
   }, [])
+
+  const handleItemDragStart = useCallback((item) => {
+    setDraggedItem(item)
+  }, [])
+
+  const handleItemDragEnd = useCallback(() => {
+    setDraggedItem(null)
+  }, [])
+
+  const handleDropOnFolder = useCallback(async (targetFolderId) => {
+    if (!draggedItem) return
+    if (draggedItem.id === targetFolderId) return
+    const prev = draggedItem
+    setDraggedItem(null)
+    try {
+      const res = await apiFetch(`/api/files/${prev.id}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination_id: targetFolderId }),
+      })
+      if (res.ok) fetchContents()
+    } catch {}
+  }, [draggedItem, fetchContents])
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault()
@@ -723,7 +838,7 @@ export default function MyDrive() {
     dragCounterRef.current = 0
 
     const droppedFiles = Array.from(e.dataTransfer.files)
-    if (droppedFiles.length === 0) return
+    if (droppedFiles.length === 0) { setDraggedItem(null); return }
     uploadFiles(droppedFiles)
   }, [uploadFiles])
 
@@ -852,6 +967,30 @@ export default function MyDrive() {
     } catch { setLockError('An error occurred') }
   }, [lockTarget, navigate, fetchContents, unlockedFolders])
 
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      const item = hoveredItemRef.current
+      if (!item) return
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (!item.is_folder) setPreviewFile(item)
+      } else if (e.key === 'Delete') {
+        e.preventDefault()
+        setTrashTarget(item)
+      } else if (e.key === 'F2') {
+        e.preventDefault()
+        setRenameTarget(item)
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        toggleStar(item)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [toggleStar])
+
   const confirmTrash = useCallback(async () => {
     if (!trashTarget) return
     try {
@@ -870,6 +1009,7 @@ export default function MyDrive() {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      {draggedItem && <style>{'* { cursor: grabbing !important; }'}</style>}
       {/* Drop Zone Overlay */}
       <DropZoneOverlay isDragging={isDragging} dragFileCount={dragFileCount} />
 
@@ -881,6 +1021,8 @@ export default function MyDrive() {
         onNewFolder={() => setShowCreateFolder(true)}
         fileInputRef={fileInputRef}
         onFileSelect={handleFileInputChange}
+        draggedItem={draggedItem}
+        onDropOnFolder={handleDropOnFolder}
       />
 
       {!ready ? (showSkeleton ? <DriveContentSkeleton /> : null) : (<>
@@ -918,7 +1060,18 @@ export default function MyDrive() {
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">Dossiers</h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
             {folders.map((folder) => (
-              <FolderCard key={folder.id} folder={folder} onOpen={handleFolderClick} onAction={handleFolderAction} />
+              <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  onOpen={handleFolderClick}
+                  onAction={handleFolderAction}
+                  onHover={setHoveredItem}
+                  onItemDragStart={handleItemDragStart}
+                  onItemDragEnd={handleItemDragEnd}
+                  isGhost={draggedItem?.id === folder.id}
+                  draggedItem={draggedItem}
+                  onDropOnFolder={handleDropOnFolder}
+                />
             ))}
           </div>
         </section>
@@ -937,7 +1090,17 @@ export default function MyDrive() {
             files.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
                 {files.map((file) => (
-                  <FileCard key={file.id} file={file} onPreview={setPreviewFile} onAction={handleFileAction} showExt={showExt} />
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    onPreview={setPreviewFile}
+                    onAction={handleFileAction}
+                    showExt={showExt}
+                    onHover={setHoveredItem}
+                    onItemDragStart={handleItemDragStart}
+                    onItemDragEnd={handleItemDragEnd}
+                    isGhost={draggedItem?.id === file.id}
+                  />
                 ))}
               </div>
             ) : folders.length > 0 ? null : null
@@ -949,7 +1112,12 @@ export default function MyDrive() {
               onFilePreview={setPreviewFile}
               onFileAction={handleFileAction}
               onFolderAction={handleFolderAction}
+              onHover={setHoveredItem}
               showExt={showExt}
+              onItemDragStart={handleItemDragStart}
+              onItemDragEnd={handleItemDragEnd}
+              draggedItem={draggedItem}
+              onDropOnFolder={handleDropOnFolder}
             />
           )}
         </section>
@@ -998,6 +1166,7 @@ export default function MyDrive() {
       {/* Move Modal */}
       <MoveItemModal
         item={moveTarget}
+        initialFolderId={folderId || null}
         onClose={() => setMoveTarget(null)}
         onMoved={() => { setMoveTarget(null); fetchContents() }}
       />
