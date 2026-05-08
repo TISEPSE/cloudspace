@@ -8,7 +8,6 @@ const navItems = [
   { path: '/dashboard', icon: 'dashboard',     label: 'Tableau de bord' },
   { path: '/gallery',   icon: 'photo_library', label: 'Galerie' },
   { path: '/shared',    icon: 'group',          label: 'Partagés avec moi' },
-  { path: '/recent',    icon: 'schedule',       label: 'Récents' },
   { path: '/starred',   icon: 'star',           label: 'Favoris' },
   { path: '/history',   icon: 'history',        label: 'Historique' },
   { path: '/trash',     icon: 'delete',         label: 'Corbeille' },

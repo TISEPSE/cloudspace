@@ -62,23 +62,20 @@ function MosaicCard({ photo, onClick, displayName }) {
   )
 }
 
-const VIEW_MODES = [
-  { id: 'small',  icon: 'apps',               label: 'Petites' },
-  { id: 'medium', icon: 'grid_view',           label: 'Moyennes' },
-  { id: 'large',  icon: 'view_module',         label: 'Grandes' },
-  { id: 'mosaic', icon: 'auto_awesome_mosaic', label: 'Mosaïque' },
+const gridSteps = [
+  'grid-cols-5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12',
+  'grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10',
+  'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
+  'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6',
+  'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
 ]
-
-const gridSizes = {
-  small:  'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10',
-  medium: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
-  large:  'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
-}
+// index = 4 - sizeStep → slider gauche (0) = gridSteps[4] = grandes tuiles
 
 export default function Gallery() {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useLocalPref('cloudspace_gallery_view', 'medium')
+  const [sizeStep, setSizeStep] = useLocalPref('cloudspace_gallery_size', 2)
+  const [mosaic, setMosaic] = useLocalPref('cloudspace_gallery_mosaic', false)
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const { uploadFiles, queue } = useUpload()
@@ -130,23 +127,34 @@ export default function Gallery() {
             : <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
           }
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-surface-dark rounded-lg p-1">
-            {VIEW_MODES.map(mode => (
-              <button
-                key={mode.id}
-                onClick={() => setViewMode(mode.id)}
-                title={mode.label}
-                className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
-                  viewMode === mode.id
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px] leading-none">{mode.icon}</span>
-              </button>
-            ))}
+        <div className="flex items-center gap-2">
+          {/* Slider de taille */}
+          <div className={`flex items-center gap-1.5 transition-opacity ${mosaic ? 'opacity-30 pointer-events-none' : ''}`}>
+            <span className="material-symbols-outlined text-[15px] text-slate-400 leading-none select-none">apps</span>
+            <input
+              type="range"
+              min={0}
+              max={4}
+              step={1}
+              value={sizeStep}
+              onChange={e => setSizeStep(Number(e.target.value))}
+              className="w-28 accent-primary cursor-pointer"
+              title="Taille des tuiles"
+            />
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none select-none">view_module</span>
           </div>
+          {/* Bouton mosaïque */}
+          <button
+            onClick={() => setMosaic(!mosaic)}
+            title="Mosaïque"
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              mosaic
+                ? 'bg-primary text-white'
+                : 'bg-slate-100 dark:bg-surface-dark text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] leading-none">auto_awesome_mosaic</span>
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 bg-primary hover:bg-blue-600 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
@@ -159,14 +167,14 @@ export default function Gallery() {
       </div>
 
       {loading ? (
-        viewMode === 'mosaic' ? (
+        mosaic ? (
           <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
             {[150, 200, 120, 180, 100, 160, 140, 110, 190, 130].map((h, i) => (
               <div key={i} className="break-inside-avoid mb-2 rounded-lg animate-pulse bg-slate-200 dark:bg-slate-700" style={{ height: h }} />
             ))}
           </div>
         ) : (
-          <div className={`grid ${gridSizes[viewMode]} gap-2`}>
+          <div className={`grid ${gridSteps[sizeStep]} gap-2`}>
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="aspect-square rounded-lg animate-pulse bg-slate-200 dark:bg-slate-700" />
             ))}
@@ -180,14 +188,14 @@ export default function Gallery() {
             Uploadez des images depuis Mon Drive pour les voir ici.
           </p>
         </div>
-      ) : viewMode === 'mosaic' ? (
+      ) : mosaic ? (
         <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
           {photos.map(photo => (
             <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
           ))}
         </div>
       ) : (
-        <div className={`grid ${gridSizes[viewMode]} gap-2`}>
+        <div className={`grid ${gridSteps[sizeStep]} gap-2`}>
           {photos.map(photo => (
             <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
           ))}

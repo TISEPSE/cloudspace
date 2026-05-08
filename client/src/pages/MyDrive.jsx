@@ -97,8 +97,8 @@ function CreateFolderModal({ open, onClose, onConfirm }) {
             </div>
             <h3 className="text-base font-semibold text-slate-900 dark:text-white">New Folder</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">close</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
         </div>
 
@@ -211,8 +211,8 @@ function RenameModal({ file, onClose, onConfirm }) {
             </div>
             <h3 className="text-base font-semibold text-slate-900 dark:text-white">Rename</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">close</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6">
@@ -287,8 +287,8 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
               <p className="text-xs text-slate-500 truncate max-w-[220px]">{folder.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">close</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
         </div>
 
@@ -417,10 +417,10 @@ function FolderCard({ folder, onOpen, onAction }) {
   return (
     <div
       onClick={() => onOpen(folder)}
-      className="flex items-center p-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-pointer transition-colors shadow-sm group"
+      className="flex items-center py-3 px-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-pointer transition-colors shadow-sm group"
     >
-      <div className="relative mr-2 flex-shrink-0">
-        <span className={`material-symbols-outlined text-xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
+      <div className="relative flex items-center justify-center mr-2 flex-shrink-0">
+        <span className={`material-symbols-outlined text-2xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
         {folder.is_locked && (
           <span className="absolute -bottom-0.5 -right-1 material-symbols-outlined text-[10px] text-slate-400 dark:text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
         )}
@@ -915,7 +915,7 @@ export default function MyDrive() {
       {view === 'grid' && folders.length > 0 && (
         <section className="mb-8">
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">Dossiers</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
             {folders.map((folder) => (
               <FolderCard key={folder.id} folder={folder} onOpen={handleFolderClick} onAction={handleFolderAction} />
             ))}

@@ -115,24 +115,24 @@ export default function FilePreviewModal({ file, onClose }) {
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px] leading-none">close</span>
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="relative z-[1] flex-1 flex items-center justify-center px-5 pb-5 min-h-0" onClick={(e) => e.stopPropagation()}>
+      <div className="relative z-[1] flex-1 flex items-center justify-center px-5 pb-5 min-h-0">
         {isImage && (
-          <img src={inlineUrl} alt={file.name} className="max-w-full max-h-full rounded-lg object-contain" />
+          <img src={inlineUrl} alt={file.name} onClick={(e) => e.stopPropagation()} className="max-w-full max-h-full rounded-lg object-contain" />
         )}
         {isPdf && (
-          <iframe src={inlineUrl} title={file.name} sandbox="allow-scripts allow-forms" className="w-[80vw] h-full rounded-lg bg-white" />
+          <iframe src={inlineUrl} title={file.name} sandbox="allow-scripts allow-forms" onClick={(e) => e.stopPropagation()} className="w-[80vw] h-full rounded-lg bg-white" />
         )}
         {isVideo && (
-          <video src={inlineUrl} controls className="max-w-full max-h-full rounded-lg" />
+          <video src={inlineUrl} controls onClick={(e) => e.stopPropagation()} className="max-w-full max-h-full rounded-lg" />
         )}
         {isAudio && (
-          <div className="bg-[#1A2633] rounded-2xl p-10 flex flex-col items-center gap-5">
+          <div onClick={(e) => e.stopPropagation()} className="bg-[#1A2633] rounded-2xl p-10 flex flex-col items-center gap-5">
             <div className={`w-20 h-20 rounded-2xl ${file.icon_bg} flex items-center justify-center`}>
               <span className={`material-symbols-outlined text-4xl ${file.icon_color}`}>{file.icon}</span>
             </div>
@@ -141,7 +141,7 @@ export default function FilePreviewModal({ file, onClose }) {
           </div>
         )}
         {isText && (
-          <div className="w-[80vw] h-[85vh] bg-[#1A2633] rounded-xl border border-[#283039] overflow-hidden flex flex-col">
+          <div onClick={(e) => e.stopPropagation()} className="w-[80vw] h-[85vh] bg-[#1A2633] rounded-xl border border-[#283039] overflow-hidden flex flex-col">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#283039] flex-shrink-0">
               <span className={`material-symbols-outlined text-sm ${isJson ? 'text-yellow-400' : 'text-blue-400'}`}>
                 {isJson ? 'data_object' : 'article'}

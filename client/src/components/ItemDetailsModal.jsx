@@ -59,8 +59,8 @@ export default function ItemDetailsModal({ itemId, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-border-dark flex-shrink-0">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">File information</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">close</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
         </div>
 
@@ -97,17 +97,17 @@ export default function ItemDetailsModal({ itemId, onClose }) {
 
               <div className="px-6 py-2">
                 {[
-                  { label: 'Name', value: data.name },
-                  { label: 'Location', value: data.path },
-                  { label: 'Owner', value: data.owner_email || '—' },
-                  { label: 'Created', value: fmt(data.created_at) },
-                  { label: 'Modified', value: fmt(data.updated_at) },
+                  { label: 'Nom', value: data.name },
+                  { label: 'Emplacement', value: data.path },
+                  { label: 'Propriétaire', value: data.owner_email || '—' },
+                  { label: 'Ajouté le', value: fmt(data.created_at) },
+                  { label: 'Modifié le', value: fmt(data.updated_at) },
                   ...(!data.is_folder && data.mime_type ? [
                     { label: 'Type', value: getMimeTypeLabel(data.mime_type) },
-                    { label: 'Media type', value: data.mime_type, mono: true },
-                    { label: 'Size', value: data.formatted_size },
+                    { label: 'Type MIME', value: data.mime_type, mono: true },
+                    { label: 'Taille', value: data.formatted_size },
                   ] : []),
-                  { label: 'Shared', value: 'No' },
+                  { label: 'Partagé', value: 'Non' },
                 ].map(({ label, value, mono }) => (
                   <div key={label} className="flex items-start py-2.5 gap-4 border-b border-slate-100 dark:border-border-dark last:border-0">
                     <span className="w-24 text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0 pt-px">{label}</span>
@@ -130,10 +130,8 @@ export default function ItemDetailsModal({ itemId, onClose }) {
                         data.pdf_meta.author   && { label: 'Auteur',     value: data.pdf_meta.author },
                         data.pdf_meta.subject  && { label: 'Sujet',      value: data.pdf_meta.subject },
                         data.pdf_meta.keywords && { label: 'Mots-clés',  value: data.pdf_meta.keywords },
-                        data.pdf_meta.creator  && { label: 'Créé avec',  value: data.pdf_meta.creator },
+                        data.pdf_meta.creator  && { label: 'Application', value: data.pdf_meta.creator },
                         data.pdf_meta.producer && { label: 'Producteur', value: data.pdf_meta.producer },
-                        data.pdf_meta.created_at  && { label: 'Créé le',    value: fmt(data.pdf_meta.created_at) },
-                        data.pdf_meta.modified_at && { label: 'Modifié le', value: fmt(data.pdf_meta.modified_at) },
                         { label: 'Chiffré',    value: data.pdf_meta.encrypted ? 'Oui' : 'Non' },
                       ].filter(Boolean).map(({ label, value }) => (
                         <div key={label} className="flex items-start py-2.5 gap-4 border-b border-slate-100 dark:border-border-dark last:border-0">

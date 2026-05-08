@@ -8,7 +8,6 @@ import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import MyDrive from './pages/MyDrive'
 import SharedWithMe from './pages/SharedWithMe'
-import Recent from './pages/Recent'
 import Starred from './pages/Starred'
 import Trash from './pages/Trash'
 import History from './pages/History'
@@ -35,7 +34,6 @@ function App() {
         <Route path="drive/folder/:folderId" element={<MyDrive />} />
         <Route path="drive/folder/:folderId/detail" element={<FileExplorerDetail />} />
         <Route path="shared" element={<SharedWithMe />} />
-        <Route path="recent" element={<Recent />} />
         <Route path="starred" element={<Starred />} />
         <Route path="gallery" element={<Gallery />} />
         <Route path="trash" element={<Trash />} />

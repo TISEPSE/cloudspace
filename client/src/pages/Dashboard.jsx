@@ -403,7 +403,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Activité récente</h3>
-            <Link to="/recent" className="text-xs text-primary hover:text-blue-600 font-medium transition-colors">Tout voir</Link>
+            <Link to="/history" className="text-xs text-primary hover:text-blue-600 font-medium transition-colors">Tout voir</Link>
           </div>
 
           {loading ? (

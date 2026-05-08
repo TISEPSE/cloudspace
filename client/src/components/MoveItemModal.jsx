@@ -62,8 +62,8 @@ export default function MoveItemModal({ item, onClose, onMoved }) {
               <p className="text-xs text-slate-500 truncate max-w-[160px]">{item.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">close</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
         </div>
 
