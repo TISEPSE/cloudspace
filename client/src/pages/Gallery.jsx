@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { apiFetch, getAccessToken } from '../lib/api'
+import { apiFetch } from '../lib/api'
+import { getMediaToken } from '../lib/mediaToken'
 import { useUpload } from '../contexts/UploadContext'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
 import FilePreviewModal from '../components/FilePreviewModal'
 
 function PhotoCard({ photo, onClick, displayName }) {
-  const token = getAccessToken()
+  const token = getMediaToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
   const [loaded, setLoaded] = useState(false)
 
@@ -35,7 +36,7 @@ function PhotoCard({ photo, onClick, displayName }) {
 }
 
 function MosaicCard({ photo, onClick, displayName }) {
-  const token = getAccessToken()
+  const token = getMediaToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
   const [loaded, setLoaded] = useState(false)
   return (

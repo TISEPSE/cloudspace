@@ -94,38 +94,6 @@
 
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      // Wait for fonts + React to actually render, then hide loading screen
-      function hideLoadingScreen() {
-        var root = document.getElementById('root');
-        var loading = document.getElementById('loading-screen');
-        if (!root || !loading) return;
-        root.classList.add('ready');
-        loading.classList.add('hidden');
-        setTimeout(function() { loading.remove(); }, 500);
-      }
-
-      // Poll until React has rendered real content inside #root
-      async function waitForApp() {
-        try { await document.fonts.ready; } catch (e) {}
-
-        // Wait until #root has actual children (React has mounted)
-        var maxWait = 10000; // 10s max
-        var start = Date.now();
-        await new Promise(function(resolve) {
-          var check = setInterval(function() {
-            var root = document.getElementById('root');
-            if ((root && root.children.length > 0) || Date.now() - start > maxWait) {
-              clearInterval(check);
-              // Small extra delay for paint
-              setTimeout(resolve, 200);
-            }
-          }, 50);
-        });
-
-        hideLoadingScreen();
-      }
-      waitForApp();
-    </script>
+    <script src="/loading.js" defer></script>
   </body>
 </html>

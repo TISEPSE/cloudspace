@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { apiFetch, getAccessToken } from '../lib/api'
+import { getMediaToken } from '../lib/mediaToken'
+import { useLocalPref } from '../hooks/useLocalPref'
+import { formatDisplayName } from '../utils/filename'
 
 function VideoThumbnail({ src, className }) {
   const ref = useRef(null)
@@ -54,6 +57,7 @@ function JsonHighlight({ text }) {
 export default function FilePreviewModal({ file, onClose }) {
   const [textContent, setTextContent] = useState(null)
   const [textLoading, setTextLoading] = useState(false)
+  const [showExt] = useLocalPref('cloudspace_show_extensions', true)
 
   useEffect(() => {
     if (!file) { setTextContent(null); return }
@@ -71,9 +75,9 @@ export default function FilePreviewModal({ file, onClose }) {
 
   if (!file) return null
 
-  const token = getAccessToken()
-  const downloadUrl = `/api/files/${file.id}/download?token=${token}`
-  const inlineUrl = `/api/files/${file.id}/download?inline=true&token=${token}`
+  const displayName = formatDisplayName(file.name, showExt)
+  const downloadUrl = `/api/files/${file.id}/download?token=${getAccessToken()}`
+  const inlineUrl = `/api/files/${file.id}/download?inline=true&token=${getMediaToken()}`
   const mime = file.mime_type || ''
   const canServe = file.has_content
 
@@ -96,7 +100,7 @@ export default function FilePreviewModal({ file, onClose }) {
             <span className={`material-symbols-outlined text-lg ${file.icon_color}`}>{file.icon}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{file.name}</p>
+            <p className="text-sm font-medium text-white truncate">{displayName}</p>
             <p className="text-xs text-slate-400">{file.formatted_size}</p>
           </div>
         </div>
@@ -136,7 +140,7 @@ export default function FilePreviewModal({ file, onClose }) {
             <div className={`w-20 h-20 rounded-2xl ${file.icon_bg} flex items-center justify-center`}>
               <span className={`material-symbols-outlined text-4xl ${file.icon_color}`}>{file.icon}</span>
             </div>
-            <p className="text-white font-medium">{file.name}</p>
+            <p className="text-white font-medium">{displayName}</p>
             <audio src={inlineUrl} controls autoPlay className="w-80" />
           </div>
         )}
@@ -146,7 +150,7 @@ export default function FilePreviewModal({ file, onClose }) {
               <span className={`material-symbols-outlined text-sm ${isJson ? 'text-yellow-400' : 'text-blue-400'}`}>
                 {isJson ? 'data_object' : 'article'}
               </span>
-              <span className="text-xs text-slate-400 font-mono">{file.name}</span>
+              <span className="text-xs text-slate-400 font-mono">{displayName}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 min-h-0">
               {textLoading ? (
@@ -171,7 +175,7 @@ export default function FilePreviewModal({ file, onClose }) {
               <span className={`material-symbols-outlined text-4xl ${file.icon_color}`}>{file.icon}</span>
             </div>
             <div className="text-center">
-              <p className="text-white font-medium mb-1">{file.name}</p>
+              <p className="text-white font-medium mb-1">{displayName}</p>
               <p className="text-sm text-slate-400">{file.formatted_size}</p>
             </div>
             {canServe ? (

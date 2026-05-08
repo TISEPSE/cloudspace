@@ -84,7 +84,7 @@ def create_app():
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: blob: https://i.pravatar.cc; "
-            "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; "
+            "script-src 'self' https://challenges.cloudflare.com; "
             "frame-src https://challenges.cloudflare.com; "
             "connect-src 'self' https://challenges.cloudflare.com"
         )

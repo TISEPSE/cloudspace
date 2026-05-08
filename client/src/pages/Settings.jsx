@@ -364,9 +364,12 @@ function ProfilSection() {
 }
 
 function SecuriteSection() {
+  const { logoutEverywhere } = useAuth()
+  const navigate = useNavigate()
   const inputClass = "w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors";
 
   const [showPwForm, setShowPwForm] = useState(false)
+  const [loggingOutAll, setLoggingOutAll] = useState(false)
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' })
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMsg, setPwMsg] = useState('')
@@ -399,6 +402,16 @@ function SecuriteSection() {
       setPwMsg('Erreur réseau')
     } finally {
       setPwSaving(false)
+    }
+  }
+
+  const handleLogoutEverywhere = async () => {
+    setLoggingOutAll(true)
+    try {
+      await logoutEverywhere()
+      navigate('/accounts', { replace: true })
+    } finally {
+      setLoggingOutAll(false)
     }
   }
 
@@ -447,6 +460,28 @@ function SecuriteSection() {
         <Row label="Authentification à deux facteurs" desc="Bientôt disponible">
           <span className="text-xs font-medium text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">Prochainement</span>
         </Row>
+      </Card>
+
+      <Card className="border-orange-200 dark:border-orange-500/20">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-orange-400">devices_off</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Se déconnecter de tous les appareils</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Invalide toutes les sessions actives, y compris celle-ci.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogoutEverywhere}
+            disabled={loggingOutAll}
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+            {loggingOutAll ? 'Déconnexion…' : 'Déconnecter'}
+          </button>
+        </div>
       </Card>
     </div>
   );

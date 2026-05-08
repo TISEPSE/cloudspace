@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getAccessToken, getRefreshToken, setTokens, clearTokens, getSessionUser, setSessionUser, apiFetch } from '../lib/api'
+import { initMediaToken, clearMediaToken } from '../lib/mediaToken'
 
 const AuthContext = createContext(null)
 const PROFILES_KEY = 'cloudspace_saved_profiles'
@@ -104,6 +105,7 @@ export function AuthProvider({ children }) {
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(data => {
           setTokens(data.access_token, data.refresh_token)
+          initMediaToken()
           const sessionUser = getSessionUser()
           // Mettre à jour le refresh token dans le profil sauvegardé
           if (sessionUser?.email && data.refresh_token) {
@@ -150,6 +152,7 @@ export function AuthProvider({ children }) {
     if (!res.ok) throw new Error(data.error || 'Login failed')
 
     setTokens(data.access_token, data.refresh_token)
+    initMediaToken()
     setSessionUser(data.user)
     saveProfile(data.user, data.refresh_token)
     localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
@@ -167,6 +170,7 @@ export function AuthProvider({ children }) {
     if (!res.ok) throw new Error(data.error || 'Registration failed')
 
     setTokens(data.access_token, data.refresh_token)
+    initMediaToken()
     setSessionUser(data.user)
     saveProfile(data.user, data.refresh_token)
     localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
@@ -188,6 +192,7 @@ export function AuthProvider({ children }) {
       const data = await res.json()
       // Rotation : sauvegarder le nouveau refresh token
       setTokens(data.access_token, data.refresh_token)
+      initMediaToken()
       localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
       setSavedProfiles(prev => {
         const next = prev.map(p => p.email === email
@@ -208,6 +213,7 @@ export function AuthProvider({ children }) {
     if (refresh && user) saveProfile(user, refresh)
     localStorage.removeItem(SESSION_STARTED_KEY)
     clearTokens()
+    clearMediaToken()
     setUser(null)
   }, [user, saveProfile])
 

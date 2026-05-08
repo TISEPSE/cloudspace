@@ -6,11 +6,11 @@ from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.extensions import db, limiter
 from src.models import User, UserSettings, TokenBlocklist, EmailVerificationToken
-from src.auth import generate_access_token, generate_refresh_token, decode_token
+from src.auth import generate_access_token, generate_refresh_token, generate_media_token, decode_token, login_required
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -301,3 +301,10 @@ def logout():
             db.session.commit()
 
     return jsonify({'message': 'Logged out successfully'})
+
+
+@auth_bp.route('/api/auth/media-token', methods=['GET'])
+@login_required
+def get_media_token():
+    token = generate_media_token(g.current_user_id)
+    return jsonify({'media_token': token, 'expires_in': 300})

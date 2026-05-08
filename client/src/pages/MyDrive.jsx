@@ -7,6 +7,7 @@ import MoveItemModal from '../components/MoveItemModal'
 import ShareModal from '../components/ShareModal'
 import { useUpload } from '../contexts/UploadContext'
 import { apiFetch, getAccessToken, downloadFile } from '../lib/api'
+import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName, splitNameExt } from '../utils/filename'
 
@@ -434,7 +435,7 @@ function FolderCard({ folder, onOpen, onAction }) {
 }
 
 function FileCard({ file, onPreview, onAction, showExt }) {
-  const token = getAccessToken()
+  const token = getMediaToken()
   const isImage = file.has_content && file.mime_type?.startsWith('image/')
   const isVideo = file.has_content && file.mime_type?.startsWith('video/')
   const [imgLoaded, setImgLoaded] = useState(false)

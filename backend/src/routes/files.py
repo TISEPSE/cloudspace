@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 from src.extensions import db
 from src.models import File, User, ActivityLog, SharedFile
 from src.utils import get_icon_for_mime, format_file_size, format_relative_time
-from src.auth import login_required
+from src.auth import login_required, media_or_login_required
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ def _trash_children(folder_id, now):
 
 
 @files_bp.route('/api/files/<file_id>/download')
-@login_required
+@media_or_login_required
 def download_file(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f or not f.storage_path:

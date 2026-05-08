@@ -7,11 +7,13 @@ const searchPlaceholders = {
   '/dashboard': 'Rechercher des fichiers, dossiers ou personnes...',
   '/drive': 'Rechercher dans Mon Drive...',
   '/shared': 'Rechercher des fichiers, dossiers ou personnes...',
-  '/recent': 'Rechercher parmi les fichiers récents...',
   '/starred': 'Rechercher parmi les favoris...',
   '/trash': 'Rechercher dans la corbeille...',
   '/settings': 'Rechercher des fichiers, dossiers ou personnes...',
 }
+
+const SESSION_STARTED_KEY = 'cloudspace_session_started'
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000
 
 export default function Header() {
   const location = useLocation()
@@ -19,6 +21,7 @@ export default function Header() {
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const [sessionMinLeft, setSessionMinLeft] = useState(null)
 
   const basePath = '/' + location.pathname.split('/')[1]
   const placeholder = searchPlaceholders[basePath] || 'Search files, folders, or people...'
@@ -68,6 +71,19 @@ export default function Header() {
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    const check = () => {
+      const started = localStorage.getItem(SESSION_STARTED_KEY)
+      if (!started) { setSessionMinLeft(null); return }
+      const remaining = SESSION_DURATION_MS - (Date.now() - parseInt(started, 10))
+      const minutes = Math.floor(remaining / 60000)
+      setSessionMinLeft(minutes < 60 ? Math.max(0, minutes) : null)
+    }
+    check()
+    const id = setInterval(check, 60000)
+    return () => clearInterval(id)
+  }, [])
+
   const handleLogout = async () => {
     setVisible(false)
     setTimeout(async () => {
@@ -95,6 +111,12 @@ export default function Header() {
 
       {/* Header Actions */}
       <div className="flex items-center gap-2 ml-4">
+        {sessionMinLeft !== null && (
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500">
+            <span className="material-symbols-outlined text-[16px] leading-none">timer</span>
+            <span className="text-xs font-medium">{sessionMinLeft} min</span>
+          </div>
+        )}
         <button className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
           <span className="material-symbols-outlined text-[20px] leading-none">notifications</span>
         </button>

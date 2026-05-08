@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import FileContextMenu from '../components/FileContextMenu'
 import { apiFetch } from '../lib/api'
+import { useLocalPref } from '../hooks/useLocalPref'
+import { formatDisplayName } from '../utils/filename'
 
 function AvatarFallback({ name }) {
   const initials = name
@@ -16,6 +18,7 @@ function AvatarFallback({ name }) {
 export default function SharedWithMe() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showExt] = useLocalPref('cloudspace_show_extensions', true)
 
   useEffect(() => {
     apiFetch('/api/sharing/shared-with-me')
@@ -84,7 +87,7 @@ export default function SharedWithMe() {
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{item.name}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{formatDisplayName(item.name, showExt)}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.mime_type || 'Dossier'}</p>
                       </div>
                     </div>

@@ -6,39 +6,34 @@
 
 _(rien)_
 
-## Prio audit sécurité (à traiter)
-
-- [ ] Réduire la durée de vie du token URL pour les médias inline (token "media" 5 min plutôt que l'access token JWT 15 min réutilisé)
-- [ ] CSP : enlever `'unsafe-inline'` sur `script-src` (nécessite config Vite avec nonces)
-
 ## Idées / backlog
 
-- [ ] Affichage des métadonnées pour les fichiers .pdf
-- [ ] Synchroniser la tuile "Activité récente" du dashboard avec la page "Récents" (actuellement vide après connexion)
-- [ ] Vérification Cloudflare à la connexion (Turnstile ou Challenge) pour valider l'appareil/client
-- [ ] Migration des comptes existants `sidebar_hover` de `false` → `true` (changement de défaut côté backend)
-- [ ] Bouton "Se déconnecter de tous les appareils" dans Settings (utiliserait `logoutEverywhere`)
+- [ ] Bouton "Se déconnecter de tous les appareils" dans Settings
 - [ ] Indicateur visuel discret quand le timer 24h approche de l'expiration
-- [ ] Étendre `formatDisplayName` aux autres pages : Recent, Starred, Trash, History, SharedWithMe, FilePreviewModal (titre)
+- [ ] Étendre `formatDisplayName` aux autres pages : Starred, Trash, History, SharedWithMe, FilePreviewModal (titre)
+- [ ] Migration des comptes existants `sidebar_hover` de `false` → `true` (changement de défaut côté backend)
 
 ## Fait récemment ✅
 
+- ✅ Sécurité : token media court (5 min) pour les URLs inline images/vidéos
+- ✅ Sécurité : suppression `'unsafe-inline'` du CSP `script-src` (loader déplacé dans `/loading.js`)
+- ✅ Sécurité : Cloudflare Turnstile sur login, register et account selector (fail-closed)
+- ✅ Sécurité : sessions liées à l'appareil via device_id dans le JWT refresh
+- ✅ Sécurité : rotation des refresh tokens avec blocklist JTI
+- ✅ Sécurité : SECRET_KEY obligatoire au démarrage
+- ✅ Sécurité : backend non-root (UID 1000)
+- ✅ Suppression page Récents (doublon avec Historique)
+- ✅ Galerie : slider de taille (5 crans) + bouton mosaïque séparé
+- ✅ Fermeture modal sur clic extérieur (FilePreviewModal)
+- ✅ Tuiles dossiers : layout horizontal, plus hautes, moins larges
+- ✅ Boutons fermer : centrage corrigé sur tous les modals
+- ✅ Métadonnées PDF dans la modal de détails
+- ✅ Labels français dans la modal de détails
 - ✅ UI : Agrandir le titre de l'application, le logo et le bouton "Ajouter" dans la navbar (centré)
 - ✅ Auto-déconnexion 24h avec vérification au focus de l'onglet
 - ✅ Auto-login en cliquant sur un profil sauvegardé (refresh token par profil)
 - ✅ Sidebar : push le contenu au hover (plus d'overlay)
-- ✅ Sidebar : sidebar_hover activé par défaut pour les nouveaux comptes
-- ✅ Avatar `object-cover` sur AccountSelector (plus d'image étirée)
-- ✅ Espacement bas de la légende du dashboard storage
-- ✅ Galerie : token passé dans l'URL des images (plus de 401)
-- ✅ Galerie : bouton Upload branché sur `UploadContext`
-- ✅ Bouton 3-points sur tuiles dossiers : icône `text-[16px]`
-- ✅ Breadcrumb du Drive : `text-sm` partout (discret), bold sur l'élément courant
-- ✅ Bouton 3-points en vue liste : `inline-flex items-center justify-center` + icône explicite `text-[18px] leading-none`
-- ✅ Pref « Afficher les extensions » dans Paramètres → Apparence (clé `cloudspace_show_extensions`)
-- ✅ Rename ne touche plus l'extension (input pour la base seulement, extension grisée à droite)
-- ✅ Galerie utilise `FilePreviewModal` (mêmes contrôles que clic sur fichier) + flèches clavier prev/next
-- ✅ Endpoint `/api/files/gallery` enrichi (icon/icon_color/icon_bg/has_content) pour FilePreviewModal
-- ✅ Upload dans le dossier courant : `UploadContext` expose `setCurrentFolderId`, MyDrive le synchronise via useEffect
-- ✅ `SECRET_KEY` requise au démarrage (RuntimeError si absente ou < 32 chars), plus de fallback `'dev-secret'`
-- ✅ Backend Flask tourne en non-root (UID 1000 `appuser`) via `gosu` dans l'entrypoint, qui chown le volume au boot puis drop les privilèges
+- ✅ Galerie : mode mosaïque, vue persistée, flèches clavier prev/next
+- ✅ Pref « Afficher les extensions » dans Paramètres → Apparence
+- ✅ Rename ne touche plus l'extension
+- ✅ Upload dans le dossier courant

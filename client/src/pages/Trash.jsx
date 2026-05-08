@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
+import { useLocalPref } from '../hooks/useLocalPref'
+import { formatDisplayName } from '../utils/filename'
 
 function TrashItemIcon({ icon, icon_color, icon_bg, is_folder }) {
   return (
@@ -18,6 +20,7 @@ export default function Trash() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [emptyingAll, setEmptyingAll] = useState(false)
+  const [showExt] = useLocalPref('cloudspace_show_extensions', true)
 
   const fetchTrash = useCallback(() => {
     setLoading(true)
@@ -135,7 +138,7 @@ export default function Trash() {
                     <div className="flex items-center gap-3">
                       <TrashItemIcon icon={item.icon} icon_color={item.icon_color} icon_bg={item.icon_bg} is_folder={item.is_folder} />
                       <span className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                        {item.name}
+                        {formatDisplayName(item.name, showExt)}
                       </span>
                     </div>
                   </td>
