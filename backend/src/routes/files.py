@@ -413,6 +413,47 @@ def get_file_details(file_id):
     if f.is_folder:
         items_count = File.query.filter_by(parent_id=f.id, is_trashed=False).count()
 
+    # Métadonnées PDF
+    pdf_meta = None
+    if has_content and f.mime_type == 'application/pdf':
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(f.storage_path)
+            meta = reader.metadata or {}
+
+            def clean(val):
+                if val is None: return None
+                s = str(val).strip()
+                return s if s else None
+
+            def parse_pdf_date(val):
+                # Format: D:20230101120000+00'00'
+                if not val: return None
+                s = str(val).strip()
+                if s.startswith("D:"):
+                    s = s[2:]
+                try:
+                    from datetime import datetime, timezone
+                    dt = datetime.strptime(s[:14], "%Y%m%d%H%M%S")
+                    return dt.replace(tzinfo=timezone.utc).isoformat() + 'Z'
+                except Exception:
+                    return clean(val)
+
+            pdf_meta = {
+                'pages': len(reader.pages),
+                'title': clean(meta.get('/Title')),
+                'author': clean(meta.get('/Author')),
+                'subject': clean(meta.get('/Subject')),
+                'keywords': clean(meta.get('/Keywords')),
+                'creator': clean(meta.get('/Creator')),
+                'producer': clean(meta.get('/Producer')),
+                'created_at': parse_pdf_date(meta.get('/CreationDate')),
+                'modified_at': parse_pdf_date(meta.get('/ModDate')),
+                'encrypted': reader.is_encrypted,
+            }
+        except Exception:
+            pdf_meta = None
+
     return jsonify({
         'id': f.id,
         'name': f.name,
@@ -433,6 +474,7 @@ def get_file_details(file_id):
         'sha1': sha1,
         'path': path,
         'items_count': items_count,
+        'pdf_meta': pdf_meta,
     })
 
 

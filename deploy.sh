@@ -50,6 +50,28 @@ else
   echo "  [=] .env déjà présent, conservation des secrets existants"
 fi
 
+# ── 2b. Cloudflare Turnstile ─────────────────────────────────────────────────
+if grep -q "VITE_TURNSTILE_SITE_KEY=" "$APP_DIR/.env" 2>/dev/null && [ -n "$(grep 'VITE_TURNSTILE_SITE_KEY=' "$APP_DIR/.env" | cut -d= -f2)" ]; then
+  echo "  [=] Turnstile déjà configuré, conservation des clés existantes"
+else
+  echo ""
+  read -p "  Configurer Cloudflare Turnstile (protection anti-bot) ? [Y/n] : " ts_answer
+  if [[ "$ts_answer" != "n" && "$ts_answer" != "N" ]]; then
+    read -p "  Site Key (publique)  : " TS_SITE_KEY
+    read -s -p "  Secret Key (privée) : " TS_SECRET_KEY
+    echo ""
+    {
+      echo ""
+      echo "# Cloudflare Turnstile"
+      echo "VITE_TURNSTILE_SITE_KEY=$TS_SITE_KEY"
+      echo "TURNSTILE_SECRET_KEY=$TS_SECRET_KEY"
+    } >> "$APP_DIR/.env"
+    echo "  [✓] Clés Turnstile ajoutées au .env"
+  else
+    echo "  [=] Turnstile ignoré — protection anti-bot désactivée"
+  fi
+fi
+
 # ── 3. Conteneurs Docker ─────────────────────────────────────────────────────
 echo "  [+] Arrêt des anciens conteneurs…"
 docker compose -f "$APP_DIR/docker-compose.yml" down --remove-orphans 2>/dev/null || true

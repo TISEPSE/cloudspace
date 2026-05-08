@@ -1,6 +1,7 @@
 import os
 import secrets
 import smtplib
+import requests as http_req
 from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -12,6 +13,23 @@ from src.models import User, UserSettings, TokenBlocklist, EmailVerificationToke
 from src.auth import generate_access_token, generate_refresh_token, decode_token
 
 auth_bp = Blueprint('auth', __name__)
+
+TURNSTILE_SECRET = os.environ.get('TURNSTILE_SECRET_KEY', '')
+
+def _verify_turnstile(token, remote_ip=''):
+    if not TURNSTILE_SECRET:
+        return True
+    if not token:
+        return False
+    try:
+        resp = http_req.post(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+            data={'secret': TURNSTILE_SECRET, 'response': token, 'remoteip': remote_ip},
+            timeout=5,
+        )
+        return resp.json().get('success', False)
+    except Exception:
+        return False  # fail closed — Cloudflare inaccessible, on refuse
 
 SMTP_HOST = os.environ.get('SMTP_HOST', '')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
@@ -57,6 +75,9 @@ def register():
     last_name = data.get('last_name', '').strip()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
+
+    if not _verify_turnstile(data.get('cf_turnstile_response', ''), request.remote_addr):
+        return jsonify({'error': 'Vérification anti-bot échouée. Veuillez réessayer.'}), 400
 
     if not all([first_name, last_name, email, password]):
         return jsonify({'error': 'All fields are required'}), 400
@@ -194,6 +215,9 @@ def login():
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
 
+    if not _verify_turnstile(data.get('cf_turnstile_response', ''), request.remote_addr):
+        return jsonify({'error': 'Vérification anti-bot échouée. Veuillez réessayer.'}), 400
+
     if not email or not password:
         return jsonify({'error': 'L\'email et le mot de passe sont requis'}), 400
 
@@ -207,8 +231,9 @@ def login():
             'email_verification_required': True,
         }), 403
 
+    device_id = data.get('device_id', '')
     access_token = generate_access_token(user.id)
-    refresh_token, _ = generate_refresh_token(user.id)
+    refresh_token, _ = generate_refresh_token(user.id, device_id=device_id)
 
     return jsonify({
         'access_token': access_token,
@@ -228,6 +253,7 @@ def login():
 def refresh():
     data = request.get_json()
     refresh_token = data.get('refresh_token', '')
+    device_id = data.get('device_id', '')
 
     if not refresh_token:
         return jsonify({'error': 'Refresh token is required'}), 400
@@ -240,14 +266,25 @@ def refresh():
     if TokenBlocklist.query.filter_by(jti=jti).first():
         return jsonify({'error': 'Token has been revoked'}), 401
 
+    # Validate device binding
+    token_device_id = payload.get('did', '')
+    if token_device_id and device_id and token_device_id != device_id:
+        return jsonify({'error': 'Session invalide pour cet appareil'}), 401
+
     user = db.session.get(User, payload['sub'])
     if not user:
         return jsonify({'error': 'User not found'}), 401
 
+    # Rotate: invalider l'ancien token
+    db.session.add(TokenBlocklist(jti=jti))
+    db.session.commit()
+
     new_access_token = generate_access_token(user.id)
+    new_refresh_token, _ = generate_refresh_token(user.id, device_id=token_device_id or device_id)
 
     return jsonify({
         'access_token': new_access_token,
+        'refresh_token': new_refresh_token,
     })
 
 

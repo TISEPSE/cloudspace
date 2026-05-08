@@ -13,6 +13,9 @@ _(rien)_
 
 ## Idées / backlog
 
+- [ ] Affichage des métadonnées pour les fichiers .pdf
+- [ ] Synchroniser la tuile "Activité récente" du dashboard avec la page "Récents" (actuellement vide après connexion)
+- [ ] Vérification Cloudflare à la connexion (Turnstile ou Challenge) pour valider l'appareil/client
 - [ ] Migration des comptes existants `sidebar_hover` de `false` → `true` (changement de défaut côté backend)
 - [ ] Bouton "Se déconnecter de tous les appareils" dans Settings (utiliserait `logoutEverywhere`)
 - [ ] Indicateur visuel discret quand le timer 24h approche de l'expiration
@@ -20,6 +23,7 @@ _(rien)_
 
 ## Fait récemment ✅
 
+- ✅ UI : Agrandir le titre de l'application, le logo et le bouton "Ajouter" dans la navbar (centré)
 - ✅ Auto-déconnexion 24h avec vérification au focus de l'onglet
 - ✅ Auto-login en cliquant sur un profil sauvegardé (refresh token par profil)
 - ✅ Sidebar : push le contenu au hover (plus d'overlay)

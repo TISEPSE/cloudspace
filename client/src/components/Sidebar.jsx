@@ -55,13 +55,13 @@ export default function Sidebar() {
           hoverExpand && isHovered ? 'shadow-xl shadow-black/10 dark:shadow-black/30' : '',
         ].join(' ')}
       >
-        {/* Logo — icône dans w-9 fixe, texte toujours dans le DOM, clippé par overflow-hidden */}
-        <div className="h-14 flex items-center px-[10px] border-b border-slate-200 dark:border-border-dark flex-shrink-0">
+        {/* Logo — icône dans w-10 fixe, texte toujours dans le DOM, clippé par overflow-hidden */}
+        <div className="h-16 flex items-center px-[10px] flex-shrink-0">
           <div className="flex items-center text-primary min-w-0">
-            <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-xl">cloud_circle</span>
+            <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[2.2em]">cloud_circle</span>
             </span>
-            <h1 className={`text-slate-900 dark:text-white text-[13px] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
+            <h1 className={`text-slate-900 dark:text-white text-[1.4em] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
               CloudSpace
             </h1>
           </div>
@@ -75,12 +75,14 @@ export default function Sidebar() {
             <button
               onClick={() => fileInputRef.current?.click()}
               title="Importer"
-              className="w-full flex items-center rounded-lg bg-primary hover:bg-blue-600 text-white font-semibold shadow-lg shadow-blue-500/20 transition-colors text-sm"
+              className="w-full h-12 flex items-center justify-center rounded-lg bg-primary hover:bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20 transition-all text-[1.1em]"
             >
-              <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-[18px] leading-none">add</span>
-              </span>
-              <span className={`whitespace-nowrap pr-3 transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>Importer</span>
+              <div className="flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[1.3em] leading-none">add</span>
+                <span className={`whitespace-nowrap transition-all duration-150 ${collapsed ? 'hidden' : 'block'}`}>
+                  Importer
+                </span>
+              </div>
             </button>
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelected} />
           </div>

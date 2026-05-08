@@ -48,9 +48,6 @@ def create_app():
             "`python -c \"import secrets; print(secrets.token_urlsafe(64))\"`."
         )
     app.config['SECRET_KEY'] = secret_key
-    app.config['GITHUB_CLIENT_ID'] = os.getenv('GITHUB_CLIENT_ID')
-    app.config['GITHUB_CLIENT_SECRET'] = os.getenv('GITHUB_CLIENT_SECRET')
-    app.config['GITHUB_CALLBACK_URL'] = os.getenv('GITHUB_CALLBACK_URL', 'http://localhost:8080/api/github/callback')
     app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:8080')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///cloudspace.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -87,8 +84,9 @@ def create_app():
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: blob: https://i.pravatar.cc; "
-            "script-src 'self' 'unsafe-inline'; "
-            "connect-src 'self'"
+            "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; "
+            "frame-src https://challenges.cloudflare.com; "
+            "connect-src 'self' https://challenges.cloudflare.com"
         )
         return response
 
@@ -98,7 +96,7 @@ def create_app():
 
     # Create tables and seed
     with app.app_context():
-        from src.models import User, File, ActivityLog, UserSettings, TokenBlocklist, GitHubConnection  # noqa: F401
+        from src.models import User, File, ActivityLog, UserSettings, TokenBlocklist  # noqa: F401
         db.create_all()
         from src.seed import seed_data
         seed_data()

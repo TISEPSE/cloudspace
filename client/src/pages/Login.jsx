@@ -1,6 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+
+function useTurnstile(onToken) {
+  const containerRef = useRef(null)
+  const widgetIdRef = useRef(null)
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !containerRef.current) return
+
+    const render = () => {
+      if (!window.turnstile || !containerRef.current || widgetIdRef.current !== null) return
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: 'dark',
+        size: 'flexible',
+        callback: onToken,
+        'expired-callback': () => onToken(''),
+        'error-callback': () => onToken(''),
+      })
+    }
+
+    if (window.turnstile) {
+      render()
+    } else if (!document.querySelector('script[src*="turnstile"]')) {
+      const script = document.createElement('script')
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      script.async = true
+      script.onload = render
+      document.head.appendChild(script)
+    } else {
+      document.querySelector('script[src*="turnstile"]').addEventListener('load', render)
+    }
+
+    return () => {
+      if (widgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current)
+        widgetIdRef.current = null
+      }
+    }
+  }, [onToken])
+
+  return containerRef
+}
 
 export default function Login() {
   const [searchParams] = useSearchParams()
@@ -10,18 +54,29 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
 
+  const turnstileRef = useTurnstile(setTurnstileToken)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError('Veuillez compléter la vérification anti-bot.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      await login(email, password, turnstileToken)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)
+      if (TURNSTILE_SITE_KEY && window.turnstile) {
+        window.turnstile.reset()
+        setTurnstileToken('')
+      }
     } finally {
       setLoading(false)
     }
@@ -34,8 +89,8 @@ export default function Login() {
 
       <div className="w-full max-w-[400px] mx-4 relative z-10">
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <span className="material-symbols-outlined text-xl text-blue-400">cloud_circle</span>
-          <h1 className="text-white text-lg font-bold tracking-tight">CloudSpace</h1>
+          <span className="material-symbols-outlined text-[2.4em] text-blue-400">cloud_circle</span>
+          <h1 className="text-white text-[1.6em] font-bold tracking-tight">CloudSpace</h1>
         </div>
 
         <div className="mb-4 flex items-center">
@@ -82,9 +137,13 @@ export default function Login() {
               className="w-full bg-[#0c1520] border border-[#1e2d3d] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
             />
 
+            {TURNSTILE_SITE_KEY && (
+              <div ref={turnstileRef} className="flex justify-center" />
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (TURNSTILE_SITE_KEY && !turnstileToken)}
               className="w-full py-3 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-500 transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/20 mt-1"
             >
               {loading ? (

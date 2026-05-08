@@ -4,7 +4,17 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens, getSessionUser
 const AuthContext = createContext(null)
 const PROFILES_KEY = 'cloudspace_saved_profiles'
 const SESSION_STARTED_KEY = 'cloudspace_session_started'
+const DEVICE_ID_KEY = 'cloudspace_device_id'
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000 // 24 heures
+
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(DEVICE_ID_KEY, id)
+  }
+  return id
+}
 
 export function useAuth() {
   return useContext(AuthContext)
@@ -49,6 +59,7 @@ export function AuthProvider({ children }) {
         last_name: userData.last_name,
         avatar_url: userData.avatar_url || null,
         refresh_token: refreshToken ?? existing?.refresh_token ?? null,
+        device_id: existing?.device_id ?? getDeviceId(),
       }
       const next = [profile, ...filtered]
       persistProfiles(next)
@@ -88,12 +99,22 @@ export function AuthProvider({ children }) {
       fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refresh }),
+        body: JSON.stringify({ refresh_token: refresh, device_id: getDeviceId() }),
       })
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(data => {
-          setTokens(data.access_token, null)
+          setTokens(data.access_token, data.refresh_token)
           const sessionUser = getSessionUser()
+          // Mettre à jour le refresh token dans le profil sauvegardé
+          if (sessionUser?.email && data.refresh_token) {
+            setSavedProfiles(prev => {
+              const next = prev.map(p => p.email === sessionUser.email
+                ? { ...p, refresh_token: data.refresh_token }
+                : p)
+              persistProfiles(next)
+              return next
+            })
+          }
           return fetchAndSetProfile(sessionUser)
         })
         .catch(() => clearTokens())
@@ -119,11 +140,11 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, turnstileToken = '') => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, cf_turnstile_response: turnstileToken }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Login failed')
@@ -136,11 +157,11 @@ export function AuthProvider({ children }) {
     return data.user
   }, [saveProfile])
 
-  const register = useCallback(async (firstName, lastName, email, password) => {
+  const register = useCallback(async (firstName, lastName, email, password, turnstileToken = '') => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password }),
+      body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password, cf_turnstile_response: turnstileToken }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -156,16 +177,25 @@ export function AuthProvider({ children }) {
   const loginWithProfile = useCallback(async (email) => {
     const profile = loadSavedProfiles().find(p => p.email === email)
     if (!profile?.refresh_token) return false
+    if (profile.device_id && profile.device_id !== getDeviceId()) return false
     try {
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: profile.refresh_token }),
+        body: JSON.stringify({ refresh_token: profile.refresh_token, device_id: getDeviceId() }),
       })
       if (!res.ok) return false
       const data = await res.json()
-      setTokens(data.access_token, profile.refresh_token)
+      // Rotation : sauvegarder le nouveau refresh token
+      setTokens(data.access_token, data.refresh_token)
       localStorage.setItem(SESSION_STARTED_KEY, Date.now().toString())
+      setSavedProfiles(prev => {
+        const next = prev.map(p => p.email === email
+          ? { ...p, refresh_token: data.refresh_token }
+          : p)
+        persistProfiles(next)
+        return next
+      })
       await fetchAndSetProfile(profile)
       return true
     } catch {

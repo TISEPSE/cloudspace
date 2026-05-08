@@ -17,7 +17,7 @@ def generate_access_token(user_id):
     return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
 
 
-def generate_refresh_token(user_id):
+def generate_refresh_token(user_id, device_id=None):
     jti = str(uuid.uuid4())
     payload = {
         'sub': user_id,
@@ -26,6 +26,8 @@ def generate_refresh_token(user_id):
         'iat': datetime.now(timezone.utc),
         'exp': datetime.now(timezone.utc) + timedelta(days=7),
     }
+    if device_id:
+        payload['did'] = device_id
     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
     return token, jti
 

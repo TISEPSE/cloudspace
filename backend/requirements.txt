@@ -10,5 +10,6 @@ gunicorn
 PyJWT
 python-magic
 requests
+pypdf
 pytest
 pytest-flask

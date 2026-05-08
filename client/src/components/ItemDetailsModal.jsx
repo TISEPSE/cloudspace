@@ -34,10 +34,11 @@ export default function ItemDetailsModal({ itemId, onClose }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showPdfMeta, setShowPdfMeta] = useState(false)
 
   useEffect(() => {
     if (!itemId) return
-    setLoading(true); setData(null); setShowAdvanced(false)
+    setLoading(true); setData(null); setShowAdvanced(false); setShowPdfMeta(false)
     apiFetch(`/api/files/${itemId}`)
       .then(r => r.json())
       .then(d => setData(d))
@@ -114,6 +115,36 @@ export default function ItemDetailsModal({ itemId, onClose }) {
                   </div>
                 ))}
               </div>
+
+              {data.pdf_meta && (
+                <div className="px-6 pb-2">
+                  <button onClick={() => setShowPdfMeta(v => !v)} className="flex items-center gap-1 text-sm font-semibold text-primary py-2 hover:opacity-80 transition-opacity">
+                    <span className="material-symbols-outlined">{showPdfMeta ? 'expand_less' : 'expand_more'}</span>
+                    Métadonnées PDF
+                  </button>
+                  {showPdfMeta && (
+                    <div>
+                      {[
+                        { label: 'Pages',      value: data.pdf_meta.pages },
+                        data.pdf_meta.title    && { label: 'Titre',      value: data.pdf_meta.title },
+                        data.pdf_meta.author   && { label: 'Auteur',     value: data.pdf_meta.author },
+                        data.pdf_meta.subject  && { label: 'Sujet',      value: data.pdf_meta.subject },
+                        data.pdf_meta.keywords && { label: 'Mots-clés',  value: data.pdf_meta.keywords },
+                        data.pdf_meta.creator  && { label: 'Créé avec',  value: data.pdf_meta.creator },
+                        data.pdf_meta.producer && { label: 'Producteur', value: data.pdf_meta.producer },
+                        data.pdf_meta.created_at  && { label: 'Créé le',    value: fmt(data.pdf_meta.created_at) },
+                        data.pdf_meta.modified_at && { label: 'Modifié le', value: fmt(data.pdf_meta.modified_at) },
+                        { label: 'Chiffré',    value: data.pdf_meta.encrypted ? 'Oui' : 'Non' },
+                      ].filter(Boolean).map(({ label, value }) => (
+                        <div key={label} className="flex items-start py-2.5 gap-4 border-b border-slate-100 dark:border-border-dark last:border-0">
+                          <span className="w-24 text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0 pt-px">{label}</span>
+                          <span className="flex-1 text-sm text-slate-800 dark:text-slate-200 break-all">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="px-6 pb-4">
                 <button onClick={() => setShowAdvanced(v => !v)} className="flex items-center gap-1 text-sm font-semibold text-primary py-2 hover:opacity-80 transition-opacity">

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 
 function initials(profile) {
   return `${profile.first_name?.[0] ?? ''}${profile.last_name?.[0] ?? ''}`.toUpperCase()
@@ -21,33 +23,94 @@ function avatarColor(email) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
+function useTurnstile(onToken, enabled) {
+  const containerRef = useRef(null)
+  const widgetIdRef = useRef(null)
+
+  useEffect(() => {
+    if (!enabled || !TURNSTILE_SITE_KEY || !containerRef.current) return
+
+    const render = () => {
+      if (!window.turnstile || !containerRef.current || widgetIdRef.current !== null) return
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: 'dark',
+        size: 'flexible',
+        callback: onToken,
+        'expired-callback': () => onToken(''),
+        'error-callback': () => onToken(''),
+      })
+    }
+
+    if (window.turnstile) {
+      render()
+    } else if (!document.querySelector('script[src*="turnstile"]')) {
+      const script = document.createElement('script')
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      script.async = true
+      script.onload = render
+      document.head.appendChild(script)
+    } else {
+      document.querySelector('script[src*="turnstile"]').addEventListener('load', render)
+    }
+
+    return () => {
+      if (widgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current)
+        widgetIdRef.current = null
+      }
+    }
+  }, [enabled, onToken])
+
+  return containerRef
+}
+
 export default function AccountSelector() {
   const { savedProfiles, removeSavedProfile, loginWithProfile } = useAuth()
   const navigate = useNavigate()
   const [loadingEmail, setLoadingEmail] = useState(null)
+  const [pendingEmail, setPendingEmail] = useState(null)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
-  const handleSelect = async (email) => {
+  const turnstileRef = useTurnstile(setTurnstileToken, !!pendingEmail)
+
+  // Dès que Turnstile valide, on lance l'auto-login
+  useEffect(() => {
+    if (!turnstileToken || !pendingEmail) return
+    const email = pendingEmail
     setLoadingEmail(email)
-    const ok = await loginWithProfile(email)
-    setLoadingEmail(null)
-    if (ok) {
-      navigate('/dashboard', { replace: true })
+    setPendingEmail(null)
+    loginWithProfile(email).then(ok => {
+      setLoadingEmail(null)
+      setTurnstileToken('')
+      if (ok) navigate('/dashboard', { replace: true })
+      else navigate(`/login?email=${encodeURIComponent(email)}`)
+    })
+  }, [turnstileToken, pendingEmail, loginWithProfile, navigate])
+
+  const handleSelect = (email) => {
+    if (loadingEmail || pendingEmail) return
+    if (!TURNSTILE_SITE_KEY) {
+      setLoadingEmail(email)
+      loginWithProfile(email).then(ok => {
+        setLoadingEmail(null)
+        if (ok) navigate('/dashboard', { replace: true })
+        else navigate(`/login?email=${encodeURIComponent(email)}`)
+      })
     } else {
-      navigate(`/login?email=${encodeURIComponent(email)}`)
+      setPendingEmail(email)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0c1520] relative overflow-hidden">
-      {/* Background glows */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md mx-4 relative z-10">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-10">
-          <span className="material-symbols-outlined text-xl text-blue-400">cloud_circle</span>
-          <h1 className="text-white text-lg font-bold tracking-tight">CloudSpace</h1>
+          <span className="material-symbols-outlined text-[2.4em] text-blue-400">cloud_circle</span>
+          <h1 className="text-white text-[1.6em] font-bold tracking-tight">CloudSpace</h1>
         </div>
 
         <div className="text-center mb-8">
@@ -65,13 +128,12 @@ export default function AccountSelector() {
               <div
                 key={profile.email}
                 className={`group flex items-center gap-4 p-4 bg-[#141f2e] border rounded-2xl cursor-pointer transition-all duration-150 ${
-                  loadingEmail === profile.email
+                  loadingEmail === profile.email || pendingEmail === profile.email
                     ? 'border-blue-500/60 bg-[#172030]'
                     : 'border-[#1e2d3d] hover:border-blue-500/40 hover:bg-[#172030]'
                 }`}
-                onClick={() => !loadingEmail && handleSelect(profile.email)}
+                onClick={() => !loadingEmail && !pendingEmail && handleSelect(profile.email)}
               >
-                {/* Avatar */}
                 <div className="flex-shrink-0">
                   {profile.avatar_url ? (
                     <img
@@ -86,7 +148,6 @@ export default function AccountSelector() {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">
                     {profile.first_name} {profile.last_name}
@@ -94,7 +155,6 @@ export default function AccountSelector() {
                   <p className="text-xs text-slate-400 truncate">{profile.email}</p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
                   {loadingEmail === profile.email ? (
                     <svg className="animate-spin w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24">
@@ -121,25 +181,46 @@ export default function AccountSelector() {
           </div>
         )}
 
-        {/* Add / use another account */}
-        <button
-          onClick={() => navigate('/login')}
-          className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
-        >
-          <span className="material-symbols-outlined text-[18px]">login</span>
-          {savedProfiles.length > 0 ? 'Utiliser un autre compte' : 'Se connecter'}
-        </button>
+        {/* Turnstile s'affiche dès qu'un profil est sélectionné */}
+        {TURNSTILE_SITE_KEY && pendingEmail && (
+          <div className="mb-4 p-4 bg-[#141f2e] border border-blue-500/30 rounded-2xl">
+            <p className="text-xs text-slate-400 text-center mb-3">Vérification anti-bot requise</p>
+            <div ref={turnstileRef} className="flex justify-center" />
+          </div>
+        )}
 
-        <Link
-          to="/register"
-          className="mt-2 w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
-        >
-          <span className="material-symbols-outlined text-[18px]">person_add</span>
-          Créer un nouveau compte
-        </Link>
+        {!pendingEmail && (
+          <>
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
+            >
+              <span className="material-symbols-outlined text-[18px]">login</span>
+              {savedProfiles.length > 0 ? 'Utiliser un autre compte' : 'Se connecter'}
+            </button>
+
+            <Link
+              to="/register"
+              className="mt-2 w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border border-dashed border-[#1e2d3d] hover:border-blue-500/40 text-slate-400 hover:text-white hover:bg-[#141f2e] transition-all text-sm font-medium"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span>
+              Créer un nouveau compte
+            </Link>
+          </>
+        )}
+
+        {pendingEmail && (
+          <button
+            onClick={() => { setPendingEmail(null); setTurnstileToken('') }}
+            className="mt-2 w-full flex items-center justify-center gap-2.5 py-3 rounded-2xl text-slate-500 hover:text-slate-300 transition-colors text-sm"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            Annuler
+          </button>
+        )}
 
         <p className="mt-8 text-center text-xs text-slate-600">
-          Les sessions sont mémorisées dans ce navigateur pendant 7 jours.
+          Les sessions sont mémorisées sur cet appareil pendant 7 jours.
         </p>
       </div>
     </div>

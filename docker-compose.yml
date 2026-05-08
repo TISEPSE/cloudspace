@@ -30,10 +30,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cloudspace}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-cloudspace_db}
       UPLOAD_FOLDER: /app/uploads
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:8080/api/github/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       FLASK_APP: app.py
     volumes:
       - uploads_data:/app/uploads
@@ -47,6 +45,8 @@ services:
     build:
       context: ./client
       dockerfile: dockerfile
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     container_name: Frontend-Vite
     ports:
       - "8080:80"

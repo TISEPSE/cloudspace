@@ -417,17 +417,16 @@ function FolderCard({ folder, onOpen, onAction }) {
   return (
     <div
       onClick={() => onOpen(folder)}
-      className="flex items-center p-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-pointer transition-colors shadow-sm group"
+      className="flex items-center p-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-pointer transition-colors shadow-sm group"
     >
-      <div className="relative mr-3 flex-shrink-0">
-        <span className={`material-symbols-outlined text-2xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
+      <div className="relative mr-2 flex-shrink-0">
+        <span className={`material-symbols-outlined text-xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
         {folder.is_locked && (
           <span className="absolute -bottom-0.5 -right-1 material-symbols-outlined text-[10px] text-slate-400 dark:text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{folder.name}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{folder.items_count} items</p>
       </div>
       <FileContextMenu isFolder isLocked={folder.is_locked} onAction={(id) => onAction(id, folder)} />
     </div>
@@ -459,7 +458,7 @@ function FileCard({ file, onPreview, onAction, showExt }) {
             </div>
           </>
         ) : (
-          <span className={`material-symbols-outlined text-3xl ${file.icon_color} opacity-80 group-hover:scale-110 transition-transform duration-300`}>{file.icon}</span>
+          <span className={`material-symbols-outlined text-2xl ${file.icon_color} opacity-80 group-hover:scale-110 transition-transform duration-300`}>{file.icon}</span>
         )}
         {isImage && (
           <img
@@ -916,7 +915,7 @@ export default function MyDrive() {
       {view === 'grid' && folders.length > 0 && (
         <section className="mb-8">
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">Dossiers</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
             {folders.map((folder) => (
               <FolderCard key={folder.id} folder={folder} onOpen={handleFolderClick} onAction={handleFolderAction} />
             ))}
@@ -935,7 +934,7 @@ export default function MyDrive() {
 
           {view === 'grid' ? (
             files.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
                 {files.map((file) => (
                   <FileCard key={file.id} file={file} onPreview={setPreviewFile} onAction={handleFileAction} showExt={showExt} />
                 ))}

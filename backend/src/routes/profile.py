@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy import text
 from src.extensions import db
-from src.models import User, File, ActivityLog, SharedFile, UserSettings, GitHubConnection, EmailVerificationToken
+from src.models import User, File, ActivityLog, SharedFile, UserSettings, EmailVerificationToken
 from src.auth import login_required
 
 logger = logging.getLogger(__name__)
@@ -228,7 +228,6 @@ def delete_account():
         (SharedFile.shared_by_id == user.id) | (SharedFile.shared_with_id == user.id)
     ).delete(synchronize_session=False)
     UserSettings.query.filter_by(user_id=user.id).delete(synchronize_session=False)
-    GitHubConnection.query.filter_by(user_id=user.id).delete(synchronize_session=False)
     EmailVerificationToken.query.filter_by(user_id=user.id).delete(synchronize_session=False)
 
     db.session.delete(user)

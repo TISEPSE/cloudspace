@@ -1,91 +1,96 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
 
-const ACTION_LABELS = {
-  file_uploaded:   'a importé',
-  file_edited:     'a modifié',
-  file_viewed:     'a consulté',
-  file_renamed:    'a renommé',
-  file_starred:    'a mis en favori',
-  file_downloaded: 'a téléchargé',
-  file_shared:     'a partagé',
-  file_moved:      'a déplacé',
-  file_restored:   'a restauré',
-  file_copied:     'a copié',
-}
-
-function FileRow({ file, currentUser, isLast }) {
-  const fileHref = file.parent_id ? `/drive/folder/${file.parent_id}` : '/drive'
-  const initials = currentUser
-    ? (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '')
-    : '?'
-  const actionLabel = ACTION_LABELS[file.action] || 'a accédé à'
+function ActivityItem({ item, isLast }) {
+  const fileHref = item.target_id
+    ? (item.target_parent_id ? `/drive/folder/${item.target_parent_id}` : '/drive')
+    : null
 
   return (
     <div className={`flex items-center gap-3 py-3 ${!isLast ? 'border-b border-slate-100 dark:border-border-dark' : ''}`}>
-      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 overflow-hidden">
-        {currentUser?.avatar_url
-          ? <img src={currentUser.avatar_url} alt="" className="w-full h-full object-cover" />
-          : <span className="text-[10px] font-bold text-white">{initials}</span>}
+      <div className={`w-8 h-8 rounded-full ${item.color} flex items-center justify-center flex-shrink-0 overflow-hidden`}>
+        {item.avatar_url
+          ? <img src={item.avatar_url} alt="" className="w-full h-full object-cover" />
+          : <span className="text-[10px] font-bold text-white">{item.initials}</span>}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-slate-700 dark:text-slate-300 truncate">
-          <span className="font-medium text-slate-900 dark:text-white">Vous</span>
-          {' '}{actionLabel}{' '}
-          <Link
-            to={fileHref}
-            state={{ openFileId: file.id }}
-            className="font-medium text-primary hover:underline"
-          >
-            {file.name}
-          </Link>
+          <span className="font-medium text-slate-900 dark:text-white">{item.user}</span>
+          {' '}{item.action}{' '}
+          {fileHref
+            ? <Link to={fileHref} state={{ openFileId: item.target_id }} className="font-medium text-primary hover:underline">{item.target}</Link>
+            : <span className="font-medium text-primary">{item.target}</span>}
         </p>
       </div>
-      {file.time && (
-        <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{file.time}</span>
-      )}
+      <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{item.time}</span>
     </div>
   )
 }
 
-function DateGroup({ group, currentUser }) {
-  return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{group.date}</span>
-        <div className="flex-1 h-px bg-slate-200 dark:bg-border-dark" />
-        <span className="text-xs text-slate-400">{group.files.length} fichier{group.files.length > 1 ? 's' : ''}</span>
-      </div>
-      <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark px-4">
-        {group.files.map((f, i) => (
-          <FileRow key={f.id} file={f} currentUser={currentUser} isLast={i === group.files.length - 1} />
-        ))}
-      </div>
-    </div>
-  )
+function groupByDate(activities) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const weekAgo = new Date(today)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const groups = {}
+  const order = []
+
+  for (const item of activities) {
+    const d = item.created_at ? new Date(item.created_at) : null
+    let key
+    if (!d) {
+      key = 'Plus tôt'
+    } else if (d >= today) {
+      key = "Aujourd'hui"
+    } else if (d >= yesterday) {
+      key = 'Hier'
+    } else if (d >= weekAgo) {
+      key = 'Cette semaine'
+    } else {
+      key = 'Plus tôt'
+    }
+    if (!groups[key]) { groups[key] = []; order.push(key) }
+    groups[key].push(item)
+  }
+
+  return order.map(k => ({ date: k, items: groups[k] }))
 }
 
 export default function Recent() {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
 
   useEffect(() => {
-    apiFetch('/api/files/recent')
+    apiFetch('/api/dashboard/activity?limit=100')
       .then(r => r.json())
-      .then(data => setGroups(data.groups || []))
+      .then(data => {
+        const activities = (data.activities || []).map((a, i) => ({
+          id: `${i}-${a.target}`,
+          user: a.user.name,
+          initials: a.user.initials,
+          color: a.user.color,
+          avatar_url: a.user.avatar_url || null,
+          action: a.action,
+          target: a.target,
+          target_id: a.target_id || null,
+          target_parent_id: a.target_parent_id || null,
+          time: a.time,
+          created_at: a.created_at || null,
+        }))
+        setGroups(groupByDate(activities))
+      })
       .finally(() => setLoading(false))
   }, [])
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Récents</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Fichiers consultés et modifiés récemment</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Récents</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Historique de vos activités récentes</p>
       </div>
 
       {loading && (
@@ -99,12 +104,23 @@ export default function Recent() {
         <div className="flex-1 flex flex-col items-center justify-center text-center">
           <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">history</span>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Aucune activité récente</p>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Vos fichiers récemment consultés apparaîtront ici.</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Vos actions apparaîtront ici.</p>
         </div>
       )}
 
       {!loading && groups.map(group => (
-        <DateGroup key={group.date} group={group} currentUser={user} />
+        <div key={group.date} className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{group.date}</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-border-dark" />
+            <span className="text-xs text-slate-400">{group.items.length} action{group.items.length > 1 ? 's' : ''}</span>
+          </div>
+          <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark px-4">
+            {group.items.map((item, i) => (
+              <ActivityItem key={item.id} item={item} isLast={i === group.items.length - 1} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   )
