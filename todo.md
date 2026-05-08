@@ -8,13 +8,14 @@ _(rien)_
 
 ## Idées / backlog
 
-- [ ] Bouton "Se déconnecter de tous les appareils" dans Settings
-- [ ] Indicateur visuel discret quand le timer 24h approche de l'expiration
-- [ ] Étendre `formatDisplayName` aux autres pages : Starred, Trash, History, SharedWithMe, FilePreviewModal (titre)
-- [ ] Migration des comptes existants `sidebar_hover` de `false` → `true` (changement de défaut côté backend)
+_(rien)_
 
 ## Fait récemment ✅
 
+- ✅ Bouton "Se déconnecter de tous les appareils" dans Paramètres → Sécurité
+- ✅ Indicateur 24h dans le header (badge amber, affiché quand < 60 min restantes)
+- ✅ `formatDisplayName` étendu à Starred, Trash, SharedWithMe, FilePreviewModal
+- ✅ Migration sidebar_hover : comptes existants migrés à `true`
 - ✅ Sécurité : token media court (5 min) pour les URLs inline images/vidéos
 - ✅ Sécurité : suppression `'unsafe-inline'` du CSP `script-src` (loader déplacé dans `/loading.js`)
 - ✅ Sécurité : Cloudflare Turnstile sur login, register et account selector (fail-closed)
