@@ -16,20 +16,44 @@ echo "==> CloudSpace deploy — $DOMAIN"
 
 # ── 1. Dépendances système ───────────────────────────────────────────────────
 if ! command -v docker &>/dev/null; then
-  echo "  [!] Docker non trouvé. Installer Docker puis relancer."
-  exit 1
+  echo "  [+] Docker non trouvé — installation en cours…"
+  apt-get update -qq
+  apt-get install -y -qq ca-certificates curl gnupg
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  systemctl enable --now docker
+  echo "  [✓] Docker installé"
+else
+  echo "  [=] Docker déjà présent ($(docker --version | cut -d' ' -f3 | tr -d ','))"
 fi
+
 if ! docker compose version &>/dev/null; then
-  echo "  [!] docker compose (v2) non trouvé. Installer le plugin compose."
-  exit 1
+  echo "  [+] Plugin docker compose non trouvé — installation…"
+  apt-get install -y -qq docker-compose-plugin
+  echo "  [✓] docker compose installé"
 fi
+
 if ! command -v nginx &>/dev/null; then
-  echo "  [!] nginx non trouvé : apt install nginx"
-  exit 1
+  echo "  [+] nginx non trouvé — installation…"
+  apt-get install -y -qq nginx
+  systemctl enable --now nginx
+  echo "  [✓] nginx installé"
+else
+  echo "  [=] nginx déjà présent"
 fi
+
 if ! command -v certbot &>/dev/null; then
-  echo "  [!] certbot non trouvé : apt install certbot python3-certbot-nginx"
-  exit 1
+  echo "  [+] certbot non trouvé — installation…"
+  apt-get install -y -qq certbot python3-certbot-nginx
+  echo "  [✓] certbot installé"
+else
+  echo "  [=] certbot déjà présent"
 fi
 
 # ── 2. Fichier .env ──────────────────────────────────────────────────────────
