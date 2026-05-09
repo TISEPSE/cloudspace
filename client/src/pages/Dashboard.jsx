@@ -305,18 +305,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background-light dark:bg-background-dark">
-      {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue, {user?.first_name || ''}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Voici ce qui se passe dans votre espace</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors">
-            <span className="material-symbols-outlined">calendar_today</span>
-            7 derniers jours
-          </button>
-        </div>
+      <div className="flex items-center gap-3 mb-6">
+        <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors">
+          <span className="material-symbols-outlined">calendar_today</span>
+          7 derniers jours
+        </button>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Bonjour, <span className="font-medium text-slate-700 dark:text-slate-300">{user?.first_name || ''}</span></p>
       </div>
 
       {/* Stats Cards */}

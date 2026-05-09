@@ -62,27 +62,16 @@ export default function Trash() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      {/* Title row */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Corbeille
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Les éléments sont supprimés définitivement après 30 jours.
-          </p>
-        </div>
-
+      <div className="flex items-center gap-3 mb-6">
         <button
           onClick={handleEmptyTrash}
           disabled={items.length === 0 || emptyingAll}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
         >
-          <span className="material-symbols-outlined text-[16px]">
-            delete_forever
-          </span>
+          <span className="material-symbols-outlined text-[16px]">delete_forever</span>
           {emptyingAll ? 'Vidage...' : 'Vider la corbeille'}
         </button>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Les éléments sont supprimés définitivement après 30 jours.</p>
       </div>
 
       {/* Loading */}

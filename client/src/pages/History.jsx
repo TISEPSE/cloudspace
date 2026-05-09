@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
 
 export default function History() {
@@ -45,12 +46,7 @@ export default function History() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Historique</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Journal de toutes les actions de votre espace</p>
-        </div>
-      </div>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Journal de toutes les actions de votre espace</p>
 
       {loading && (
         <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
@@ -90,7 +86,14 @@ export default function History() {
                     <p className="text-sm text-slate-700 dark:text-slate-300">
                       <span className="font-medium text-slate-900 dark:text-white">{event.action}</span>
                       {' '}
-                      <span className="font-medium text-primary">{event.target}</span>
+                      {event.target_id
+                        ? <Link
+                            to={event.target_parent_id ? `/drive/folder/${event.target_parent_id}` : '/drive'}
+                            state={{ openFileId: event.target_id }}
+                            className="font-medium text-primary hover:underline"
+                          >{event.target}</Link>
+                        : <span className="font-medium text-primary">{event.target}</span>
+                      }
                     </p>
                   </div>
                   <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 tabular-nums">{event.time}</span>

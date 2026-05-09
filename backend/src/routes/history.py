@@ -93,6 +93,7 @@ def get_history():
             'action': action_label,
             'target': file_obj.name if file_obj else 'un élément',
             'target_id': act.file_id,
+            'target_parent_id': file_obj.parent_id if file_obj else None,
             'icon': icon,
             'icon_color': icon_color,
             'icon_bg': icon_bg,

@@ -29,14 +29,7 @@ export default function SharedWithMe() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Partagés avec moi</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Fichiers et dossiers partagés par d'autres membres
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Fichiers et dossiers partagés par d'autres membres</p>
 
       {loading && (
         <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">

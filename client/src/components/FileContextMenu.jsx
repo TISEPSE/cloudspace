@@ -55,13 +55,13 @@ function useClickOutside(ref, onClose) {
   }, [ref, onClose])
 }
 
-function getActions(isFolder, isLocked) {
+function getActions(isFolder, isLocked, isStarred) {
   return [
     isFolder
       ? { id: 'open', label: 'Ouvrir', icon: 'folder_open' }
       : { id: 'preview', label: 'Aperçu', icon: 'visibility', shortcut: 'Space' },
     { id: 'rename', label: 'Renommer', icon: 'edit', shortcut: 'F2' },
-    { id: 'star', label: 'Ajouter aux favoris', icon: 'star' },
+    { id: 'star', label: isStarred ? 'Retirer des favoris' : 'Ajouter aux favoris', icon: isStarred ? 'star_border' : 'star' },
     { id: 'details', label: 'Détails', icon: 'info' },
     { type: 'divider' },
     ...(isFolder ? [{ id: 'lock', label: isLocked ? 'Déverrouiller' : 'Verrouiller', icon: isLocked ? 'lock_open' : 'lock' }] : []),
@@ -73,7 +73,7 @@ function getActions(isFolder, isLocked) {
   ]
 }
 
-function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked }) {
+function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isStarred }) {
   const menuRef = useRef(null)
   const [visible, setVisible] = useState(false)
   const position = useDropdownPosition(anchorRect, menuRef)
@@ -117,7 +117,7 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked }) {
           }
         `}
       >
-        {getActions(isFolder, isLocked).map((action, index) => {
+        {getActions(isFolder, isLocked, isStarred).map((action, index) => {
           if (action.type === 'divider') {
             return (
               <div
@@ -166,7 +166,7 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked }) {
   )
 }
 
-export default function FileContextMenu({ children, className, onAction, isFolder, isLocked, hideUntilHover = true, forceVisible = false }) {
+export default function FileContextMenu({ children, className, onAction, isFolder, isLocked, isStarred = false, hideUntilHover = true, forceVisible = false }) {
   const [open, setOpen] = useState(false)
   const [anchorRect, setAnchorRect] = useState(null)
   const btnRef = useRef(null)
@@ -209,6 +209,7 @@ export default function FileContextMenu({ children, className, onAction, isFolde
           onAction={onAction}
           isFolder={isFolder}
           isLocked={isLocked}
+          isStarred={isStarred}
         />
       )}
     </>
