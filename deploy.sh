@@ -1,8 +1,14 @@
 #!/bin/bash
 set -e
 
-DOMAIN="cloudspace.tisepse.com"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── Domaine ──────────────────────────────────────────────────────────────────
+read -p "  Domaine ou sous-domaine (ex: cloud.monsite.com) : " DOMAIN
+if [ -z "$DOMAIN" ]; then
+  echo "  [!] Domaine requis."
+  exit 1
+fi
 NGINX_CONF="/etc/nginx/sites-available/cloudspace"
 NGINX_LINK="/etc/nginx/sites-enabled/cloudspace"
 

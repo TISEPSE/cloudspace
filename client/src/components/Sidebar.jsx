@@ -21,6 +21,7 @@ export default function Sidebar() {
   const { uploadFiles } = useUpload()
   const [storage, setStorage] = useState({ percentage: 0, formatted_used: '0 B', formatted_limit: '20 GB' })
   const [hoverExpand] = useLocalPref('cloudspace_sidebar_hover', true)
+  const [sidebarPos] = useLocalPref('cloudspace_sidebar_position', 'left')
   const [isHovered, setIsHovered] = useState(false)
 
   const collapsed = hoverExpand && !isHovered
@@ -47,7 +48,7 @@ export default function Sidebar() {
         onMouseEnter={() => hoverExpand && setIsHovered(true)}
         onMouseLeave={() => hoverExpand && setIsHovered(false)}
         className={[
-          'bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark',
+          `bg-white dark:bg-background-dark ${sidebarPos === 'right' ? 'border-l' : 'border-r'} border-slate-200 dark:border-border-dark`,
           'flex flex-col overflow-hidden flex-shrink-0',
           'transition-[width] duration-200 ease-in-out z-20',
           collapsed ? 'w-[56px]' : 'w-60',

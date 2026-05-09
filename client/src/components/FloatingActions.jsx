@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import SearchModal from './SearchModal'
+import FilePreviewModal from './FilePreviewModal'
 
 const SESSION_STARTED_KEY = 'cloudspace_session_started'
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000
@@ -22,6 +24,11 @@ export default function FloatingActions() {
   const location = useLocation()
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [previewFile, setPreviewFile] = useState(null)
+  const openSearch = useCallback(() => setSearchOpen(true), [])
+  const closeSearch = useCallback(() => setSearchOpen(false), [])
+  const closePreview = useCallback(() => setPreviewFile(null), [])
   const menuRef = useRef(null)
   const [sessionMinLeft, setSessionMinLeft] = useState(null)
   const [anchorRect, setAnchorRect] = useState(null)
@@ -105,6 +112,14 @@ export default function FloatingActions() {
           </div>
         )}
 
+        <button
+          onClick={openSearch}
+          title="Rechercher (⌘K)"
+          className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150"
+        >
+          <span className="material-symbols-outlined text-[20px] leading-none">search</span>
+        </button>
+
         <button className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150">
           <span className="material-symbols-outlined text-[20px] leading-none">notifications</span>
         </button>
@@ -172,6 +187,9 @@ export default function FloatingActions() {
         </div>,
         document.body
       )}
+
+      {searchOpen && <SearchModal onClose={closeSearch} onOpenFile={setPreviewFile} />}
+      <FilePreviewModal file={previewFile} onClose={closePreview} />
     </div>
   )
 }

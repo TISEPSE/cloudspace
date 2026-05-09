@@ -543,10 +543,17 @@ function ThemeCard({ theme, isActive, onSelect }) {
 function ApparenceSection() {
   const { theme: activeTheme, setTheme } = useTheme();
   const [fontSize, setFontSize] = useState('medium');
-  const [compactMode, setCompactMode] = useState(false);
-  const [sidebarPos, setSidebarPos] = useState('left');
+  const [sidebarPos, setSidebarPosRaw] = useState(() => {
+    try { const s = localStorage.getItem('cloudspace_sidebar_position'); return s ? JSON.parse(s) : 'left' } catch { return 'left' }
+  });
   const [sidebarHover, setSidebarHoverRaw] = useState(true);
   const [showExtensions, setShowExtensions] = useLocalPref('cloudspace_show_extensions', true);
+  const setSidebarPos = (v) => {
+    setSidebarPosRaw(v);
+    localStorage.setItem('cloudspace_sidebar_position', JSON.stringify(v));
+    window.dispatchEvent(new CustomEvent('localPrefChange', { detail: { key: 'cloudspace_sidebar_position', value: v } }));
+    save({ sidebar_position: v });
+  };
   const setSidebarHover = (v) => {
     setSidebarHoverRaw(v);
     localStorage.setItem('cloudspace_sidebar_hover', JSON.stringify(v));
@@ -560,8 +567,11 @@ function ApparenceSection() {
       .then(data => {
         if (data.theme) setTheme(data.theme);
         if (data.font_size) setFontSize(data.font_size);
-        if (data.compact_mode !== undefined) setCompactMode(data.compact_mode);
-        if (data.sidebar_position) setSidebarPos(data.sidebar_position);
+if (data.sidebar_position) {
+          setSidebarPosRaw(data.sidebar_position);
+          localStorage.setItem('cloudspace_sidebar_position', JSON.stringify(data.sidebar_position));
+          window.dispatchEvent(new CustomEvent('localPrefChange', { detail: { key: 'cloudspace_sidebar_position', value: data.sidebar_position } }));
+        }
         if (data.sidebar_hover !== undefined) {
           setSidebarHoverRaw(data.sidebar_hover);
           localStorage.setItem('cloudspace_sidebar_hover', JSON.stringify(data.sidebar_hover));
@@ -604,20 +614,14 @@ function ApparenceSection() {
             onChange={v => { setFontSize(v); save({ font_size: v }); }}
           />
         </Row>
-        <Row
-          label="Mode compact"
-          desc="Réduit les espacements dans l'interface"
-        >
-          <Toggle enabled={compactMode} onChange={() => { const next = !compactMode; setCompactMode(next); save({ compact_mode: next }); }} />
-        </Row>
-        <Row
+<Row
           label="Position de la barre latérale"
           desc="Côté d'affichage de la navigation"
         >
           <SegmentControl
             value={sidebarPos}
             options={[{ value: 'left', label: 'Gauche' }, { value: 'right', label: 'Droite' }]}
-            onChange={v => { setSidebarPos(v); save({ sidebar_position: v }); }}
+            onChange={setSidebarPos}
           />
         </Row>
         <Row

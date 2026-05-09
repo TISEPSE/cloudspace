@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy import or_
 from src.extensions import db
@@ -56,6 +57,7 @@ def search():
             'icon_color': f.icon_color,
             'icon_bg': f.icon_bg or 'bg-slate-50',
             'parent_id': f.parent_id,
+            'has_content': bool(f.storage_path and os.path.exists(f.storage_path)),
             'updated_at': f.updated_at.isoformat() + 'Z' if f.updated_at else None,
             'relative_time': format_relative_time(f.updated_at) if f.updated_at else None,
         } for f in results],

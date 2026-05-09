@@ -1,16 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-
-const searchPlaceholders = {
-  '/dashboard': 'Rechercher des fichiers, dossiers ou personnes...',
-  '/drive': 'Rechercher dans Mon Drive...',
-  '/shared': 'Rechercher des fichiers, dossiers ou personnes...',
-  '/starred': 'Rechercher parmi les favoris...',
-  '/trash': 'Rechercher dans la corbeille...',
-  '/settings': 'Rechercher des fichiers, dossiers ou personnes...',
-}
+import SearchModal from './SearchModal'
 
 const SESSION_STARTED_KEY = 'cloudspace_session_started'
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000
@@ -22,9 +14,10 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
   const [sessionMinLeft, setSessionMinLeft] = useState(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
-  const basePath = '/' + location.pathname.split('/')[1]
-  const placeholder = searchPlaceholders[basePath] || 'Search files, folders, or people...'
+  const openSearch = useCallback(() => setSearchOpen(true), [])
+  const closeSearch = useCallback(() => setSearchOpen(false), [])
 
   const initials = user ? (user.first_name[0] + user.last_name[0]).toUpperCase() : '?'
   const displayName = user ? `${user.first_name} ${user.last_name[0]}.` : ''
@@ -72,6 +65,14 @@ export default function Header() {
   }, [menuOpen])
 
   useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch() }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [openSearch])
+
+  useEffect(() => {
     const check = () => {
       const started = localStorage.getItem(SESSION_STARTED_KEY)
       if (!started) { setSessionMinLeft(null); return }
@@ -95,28 +96,23 @@ export default function Header() {
 
   return (
     <header className="h-14 flex items-center justify-between px-6 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark z-10">
-      {/* Search */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="material-symbols-outlined text-slate-400">search</span>
-          </div>
-          <input
-            className="block w-full pl-10 pr-3 py-2 rounded-lg bg-slate-100 dark:bg-surface-dark border-none text-slate-900 dark:text-white placeholder-slate-500 focus:ring-2 focus:ring-primary sm:text-sm"
-            placeholder={placeholder}
-            type="text"
-          />
-        </div>
-      </div>
+      <div className="flex-1" />
 
       {/* Header Actions */}
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex items-center gap-2">
         {sessionMinLeft !== null && (
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500">
             <span className="material-symbols-outlined text-[16px] leading-none">timer</span>
             <span className="text-xs font-medium">{sessionMinLeft} min</span>
           </div>
         )}
+        <button
+          onClick={openSearch}
+          title="Rechercher (⌘K)"
+          className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors"
+        >
+          <span className="material-symbols-outlined text-[20px] leading-none">search</span>
+        </button>
         <button className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
           <span className="material-symbols-outlined text-[20px] leading-none">notifications</span>
         </button>
@@ -203,6 +199,8 @@ export default function Header() {
           document.body
         )}
       </div>
+
+      {searchOpen && <SearchModal onClose={closeSearch} />}
     </header>
   )
 }
