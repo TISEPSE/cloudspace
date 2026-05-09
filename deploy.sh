@@ -103,19 +103,28 @@ else
 fi
 
 # ── 3. Conteneurs Docker ─────────────────────────────────────────────────────
+if [ -f "$APP_DIR/docker-compose.prod.yml" ] && [ ! -f "$APP_DIR/backend/dockerfile" ]; then
+  COMPOSE_FILE="$APP_DIR/docker-compose.prod.yml"
+  echo "  [+] Mode production — pull des images Docker Hub…"
+  docker compose -f "$COMPOSE_FILE" pull
+else
+  COMPOSE_FILE="$APP_DIR/docker-compose.yml"
+  echo "  [+] Mode local — build des images depuis les sources…"
+fi
+
 echo "  [+] Arrêt des anciens conteneurs…"
-docker compose -f "$APP_DIR/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
 
-echo "  [+] Build et démarrage des conteneurs…"
-docker compose -f "$APP_DIR/docker-compose.yml" up -d --build
+echo "  [+] Démarrage des conteneurs…"
+docker compose -f "$COMPOSE_FILE" up -d
 
-echo "  [+] Attente du démarrage du backend (tests + migrations)…"
-until docker compose -f "$APP_DIR/docker-compose.yml" logs api 2>/dev/null | grep -q "Starting gunicorn\|Traceback"; do
+echo "  [+] Attente du démarrage du backend…"
+until docker compose -f "$COMPOSE_FILE" logs api 2>/dev/null | grep -q "Starting gunicorn\|Traceback"; do
   sleep 3
 done
-if docker compose -f "$APP_DIR/docker-compose.yml" logs api 2>/dev/null | grep -q "Traceback"; then
+if docker compose -f "$COMPOSE_FILE" logs api 2>/dev/null | grep -q "Traceback"; then
   echo "  [!] Le backend a planté. Logs :"
-  docker compose -f "$APP_DIR/docker-compose.yml" logs api --tail=30
+  docker compose -f "$COMPOSE_FILE" logs api --tail=30
   exit 1
 fi
 echo "  [✓] Conteneurs démarrés"
@@ -169,4 +178,4 @@ fi
 # ── 6. Résumé ────────────────────────────────────────────────────────────────
 echo ""
 echo "  ✅  CloudSpace est accessible sur https://$DOMAIN"
-docker compose -f "$APP_DIR/docker-compose.yml" ps
+docker compose -f "$COMPOSE_FILE" ps
