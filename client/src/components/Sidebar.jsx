@@ -116,15 +116,15 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
                     to={item.path}
                     title={item.label}
                     className={[
-                      'flex items-center rounded-lg text-[13px] font-medium transition-colors',
+                      'flex items-center rounded-lg text-base md:text-[13px] font-medium transition-colors gap-1 md:gap-0',
                       isActive
                         ? 'bg-slate-100 dark:bg-surface-dark text-primary dark:text-white'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark',
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-border-dark active:bg-slate-100 dark:active:bg-border-dark/70',
                     ].join(' ')}
                   >
-                    <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                    <span className="w-12 h-12 md:w-9 md:h-9 flex items-center justify-center flex-shrink-0">
                       <span className={[
-                        'material-symbols-outlined',
+                        'material-symbols-outlined text-[26px] md:text-[20px]',
                         isActive ? 'fill-current' : '',
                         item.path === '/starred' && isActive ? 'text-amber-500' : '',
                       ].join(' ')}>{item.icon}</span>

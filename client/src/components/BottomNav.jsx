@@ -16,26 +16,26 @@ export default function BottomNav() {
       className="md:hidden flex-shrink-0 border-t border-slate-200 dark:border-border-dark bg-white dark:bg-surface-dark pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >
-      <div className="flex items-stretch justify-around h-[72px]">
+      <div className="flex items-stretch justify-around h-14">
         {items.map(item => {
           const isActive = item.match ? item.match(location.pathname) : location.pathname === item.path
           return (
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 transition-colors select-none active:bg-slate-100 dark:active:bg-border-dark/70 ${
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors select-none active:bg-slate-100 dark:active:bg-border-dark/70 ${
                 isActive
                   ? 'text-primary'
                   : 'text-slate-400 dark:text-slate-500'
               }`}
             >
               <span
-                className="material-symbols-outlined text-[30px] leading-none"
+                className="material-symbols-outlined text-[22px] leading-none"
                 style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
               >
                 {item.icon}
               </span>
-              <span className="text-[12px] font-medium leading-none">{item.label}</span>
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </NavLink>
           )
         })}

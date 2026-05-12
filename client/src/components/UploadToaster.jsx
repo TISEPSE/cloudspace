@@ -100,7 +100,7 @@ export default function UploadToaster() {
   return (
     <div
       className={`fixed z-50 transition-all duration-300 ease-out
-        bottom-[calc(72px+env(safe-area-inset-bottom)+12px)] left-3 right-3 w-auto
+        bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] left-3 right-3 w-auto
         sm:bottom-5 sm:right-5 sm:left-auto sm:w-[360px] ${
         animateIn
           ? 'translate-y-0 opacity-100 scale-100'
