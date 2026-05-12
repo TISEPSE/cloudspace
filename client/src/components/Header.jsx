@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { apiUrl } from '../lib/backendUrl'
 import SearchModal from './SearchModal'
 
 const SESSION_STARTED_KEY = 'cloudspace_session_started'
@@ -133,7 +134,7 @@ export default function Header() {
           >
             <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
               {user?.avatar_url
-                ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={apiUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
                 : initials}
             </div>
             <span className="text-sm font-medium text-slate-700 dark:text-white hidden sm:block">{displayName}</span>
@@ -166,7 +167,7 @@ export default function Header() {
               <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-[#2d3b47] flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
                   {user?.avatar_url
-                    ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ? <img src={apiUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
                     : initials}
                 </div>
                 <div className="min-w-0">

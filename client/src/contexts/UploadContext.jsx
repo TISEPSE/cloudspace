@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { getAccessToken } from '../lib/api'
+import { apiUrl } from '../lib/backendUrl'
 
 const UploadContext = createContext(null)
 
@@ -74,7 +75,7 @@ export function UploadProvider({ children }) {
         )
       })
 
-      xhr.open('POST', '/api/files/upload')
+      xhr.open('POST', apiUrl('/api/files/upload'))
       const token = getAccessToken()
       if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
       xhr.send(formData)

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { apiFetch, getAccessToken } from '../lib/api'
+import { apiUrl } from '../lib/backendUrl'
 import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
@@ -83,8 +84,8 @@ export default function FilePreviewModal({ file, onClose }) {
   if (!file) return null
 
   const displayName = formatDisplayName(file.name, showExt)
-  const downloadUrl = `/api/files/${file.id}/download?token=${getAccessToken()}`
-  const inlineUrl = `/api/files/${file.id}/download?inline=true&token=${getMediaToken()}`
+  const downloadUrl = apiUrl(`/api/files/${file.id}/download?token=${getAccessToken()}`)
+  const inlineUrl = apiUrl(`/api/files/${file.id}/download?inline=true&token=${getMediaToken()}`)
   const mime = file.mime_type || ''
   const canServe = file.has_content
 

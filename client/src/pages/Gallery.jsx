@@ -6,7 +6,7 @@ import { getMediaToken } from '../lib/mediaToken'
 import { useUpload } from '../contexts/UploadContext'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
-import { isNative } from '../lib/backendUrl'
+import { isNative, apiUrl } from '../lib/backendUrl'
 import { takePhoto } from '../lib/camera'
 import { shareItemNative } from '../lib/share'
 import FilePreviewModal from '../components/FilePreviewModal'
@@ -15,7 +15,7 @@ import FileContextMenu from '../components/FileContextMenu'
 
 function PhotoCard({ photo, onClick, onAction, displayName }) {
   const token = getMediaToken()
-  const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
+  const imgUrl = apiUrl(`/api/files/${photo.id}/download?inline=true&token=${token}`)
   const [loaded, setLoaded] = useState(false)
 
   return (
@@ -53,7 +53,7 @@ function PhotoCard({ photo, onClick, onAction, displayName }) {
 
 function MosaicCard({ photo, onClick, onAction, displayName }) {
   const token = getMediaToken()
-  const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
+  const imgUrl = apiUrl(`/api/files/${photo.id}/download?inline=true&token=${token}`)
   const [loaded, setLoaded] = useState(false)
   return (
     <div

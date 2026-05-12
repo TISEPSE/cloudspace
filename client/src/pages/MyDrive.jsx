@@ -12,6 +12,7 @@ import ShareModal from '../components/ShareModal'
 import { useUpload } from '../contexts/UploadContext'
 import { useToast } from '../contexts/ToastContext'
 import { apiFetch, getAccessToken, downloadFile } from '../lib/api'
+import { apiUrl } from '../lib/backendUrl'
 import { copyImageToClipboard } from '../lib/copyImage'
 import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
@@ -572,7 +573,7 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
         {isVideo ? (
           <>
             <VideoThumbnail
-              src={`/api/files/${file.id}/download?inline=true&token=${token}`}
+              src={apiUrl(`/api/files/${file.id}/download?inline=true&token=${token}`)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/15 transition-colors">
@@ -586,7 +587,7 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
         )}
         {isImage && (
           <img
-            src={`/api/files/${file.id}/download?inline=true&token=${token}`}
+            src={apiUrl(`/api/files/${file.id}/download?inline=true&token=${token}`)}
             alt={file.name}
             onLoad={() => setImgLoaded(true)}
             className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}

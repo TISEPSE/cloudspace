@@ -7,6 +7,7 @@ import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
 import { shareItemNative } from '../lib/share'
+import { apiUrl } from '../lib/backendUrl'
 
 function FolderRow({ folder, onAction, onOpen }) {
   return (
@@ -44,7 +45,7 @@ function FileCard({ file, onPreview, onAction, showExt }) {
         <span className={`material-symbols-outlined text-2xl ${file.icon_color} opacity-80 group-hover:scale-110 transition-transform duration-300`}>{file.icon}</span>
         {isImage && (
           <img
-            src={`/api/files/${file.id}/download?inline=true&token=${token}`}
+            src={apiUrl(`/api/files/${file.id}/download?inline=true&token=${token}`)}
             alt={file.name}
             onLoad={() => setImgLoaded(true)}
             className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}

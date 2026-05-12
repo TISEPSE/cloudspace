@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { apiUrl } from '../lib/backendUrl'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 
@@ -137,7 +138,7 @@ export default function AccountSelector() {
                 <div className="flex-shrink-0">
                   {profile.avatar_url ? (
                     <img
-                      src={profile.avatar_url}
+                      src={apiUrl(profile.avatar_url)}
                       alt={profile.first_name}
                       className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
                     />

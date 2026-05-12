@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import FileContextMenu from '../components/FileContextMenu'
 import { apiFetch } from '../lib/api'
+import { apiUrl } from '../lib/backendUrl'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
 
@@ -88,7 +89,7 @@ export default function SharedWithMe() {
                   <td className="hidden sm:table-cell px-5 py-3">
                     <div className="flex items-center gap-2.5">
                       {item.shared_by.avatar_url ? (
-                        <img src={item.shared_by.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                        <img src={apiUrl(item.shared_by.avatar_url)} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                       ) : (
                         <AvatarFallback name={item.shared_by.name} />
                       )}
