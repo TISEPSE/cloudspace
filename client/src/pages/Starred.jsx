@@ -148,10 +148,16 @@ export default function Starred() {
 
   const isEmpty = !loading && folders.length === 0 && files.length === 0
 
+  const totalCount = folders.length + files.length
+
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex flex-col">
-      <div className="flex items-center gap-2 mb-6">
-        <div className="flex items-center rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden">
+      <div className="flex items-center gap-3 mb-6">
+        {loading
+          ? <div className="h-3 w-20 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
+          : <p className="text-sm text-slate-500 dark:text-slate-400">{totalCount} favori{totalCount !== 1 ? 's' : ''}</p>
+        }
+        <div className="flex items-center rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden ml-auto">
           <button
             onClick={() => setView('grid')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === 'grid' ? 'text-primary bg-primary/5 dark:bg-primary/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}

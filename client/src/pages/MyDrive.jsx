@@ -610,13 +610,18 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
   )
 }
 
-function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect, draggedItem, onDropOnFolder, filters, onFiltersChange, activeFilterCount }) {
+function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect, draggedItem, onDropOnFolder, filters, onFiltersChange, activeFilterCount, itemCount = 0, loading = false }) {
   const [dragOverCrumbId, setDragOverCrumbId] = useState(null)
   const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const atRoot = breadcrumbs.length <= 1
 
   return (
-    <div className={`flex flex-col md:flex-row md:items-center gap-3 mb-6 ${breadcrumbs.length > 1 ? 'md:justify-between' : ''}`}>
-      {breadcrumbs.length > 1 && (
+    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6 md:justify-between">
+      {atRoot ? (
+        loading
+          ? <div className="h-3 w-24 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
+          : <p className="text-sm text-slate-500 dark:text-slate-400">{itemCount} élément{itemCount !== 1 ? 's' : ''}</p>
+      ) : (
         <nav aria-label="Breadcrumb" className="flex overflow-x-auto -mx-1 px-1 scrollbar-thin">
           <ol className="inline-flex items-center space-x-0.5">
             {breadcrumbs.map((crumb, index) => {
@@ -1252,6 +1257,8 @@ export default function MyDrive() {
         filters={filters}
         onFiltersChange={setFilters}
         activeFilterCount={activeFilterCount}
+        itemCount={filteredFolders.length + filteredFiles.length}
+        loading={!ready}
       />
 
       {!ready ? (showSkeleton ? <DriveContentSkeleton /> : null) : (<>
