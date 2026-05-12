@@ -16,8 +16,20 @@ auth_bp = Blueprint('auth', __name__)
 
 TURNSTILE_SECRET = os.environ.get('TURNSTILE_SECRET_KEY', '')
 
+# Origines des wrappers natifs Capacitor — exemptées de Turnstile
+# (Cloudflare ne peut pas vérifier ces origines, mais l'app passe par CORS strict)
+_NATIVE_ORIGINS = frozenset((
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
+))
+
 def _verify_turnstile(token, remote_ip=''):
     if not TURNSTILE_SECRET:
+        return True
+    # Bypass pour les apps natives (Capacitor) : le Origin est validé par CORS
+    origin = request.headers.get('Origin', '')
+    if origin in _NATIVE_ORIGINS:
         return True
     if not token:
         return False
