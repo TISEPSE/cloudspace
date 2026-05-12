@@ -208,7 +208,9 @@ function ProfilSection() {
     ? `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase()
     : '…'
 
-  const displayAvatar = avatarPreview || profile?.avatar_url
+  // avatarPreview est un blob URL local (createObjectURL) -> ne pas wrap.
+  // avatar_url est relatif (/api/user/avatar/xxx) -> apiUrl le rend absolu sur native.
+  const displayAvatar = avatarPreview || (profile?.avatar_url ? apiUrl(profile.avatar_url) : null)
 
   return (
     <div className="space-y-5">
