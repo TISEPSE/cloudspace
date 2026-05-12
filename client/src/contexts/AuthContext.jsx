@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getAccessToken, getRefreshToken, setTokens, clearTokens, getSessionUser, setSessionUser, apiFetch } from '../lib/api'
+import { apiUrl } from '../lib/backendUrl'
 import { initMediaToken, clearMediaToken } from '../lib/mediaToken'
 
 const AuthContext = createContext(null)
@@ -97,7 +98,7 @@ export function AuthProvider({ children }) {
     }
 
     if (refresh) {
-      fetch('/api/auth/refresh', {
+      fetch(apiUrl('/api/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh, device_id: getDeviceId() }),
@@ -130,7 +131,7 @@ export function AuthProvider({ children }) {
     setSavedProfiles(prev => {
       const profile = prev.find(p => p.email === email)
       if (profile?.refresh_token) {
-        fetch('/api/auth/logout', {
+        fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: profile.refresh_token }),
@@ -143,7 +144,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (email, password, turnstileToken = '') => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, cf_turnstile_response: turnstileToken }),
@@ -161,7 +162,7 @@ export function AuthProvider({ children }) {
   }, [saveProfile])
 
   const register = useCallback(async (firstName, lastName, email, password, turnstileToken = '') => {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(apiUrl('/api/auth/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password, cf_turnstile_response: turnstileToken }),
@@ -183,7 +184,7 @@ export function AuthProvider({ children }) {
     if (!profile?.refresh_token) return false
     if (profile.device_id && profile.device_id !== getDeviceId()) return false
     try {
-      const res = await fetch('/api/auth/refresh', {
+      const res = await fetch(apiUrl('/api/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: profile.refresh_token, device_id: getDeviceId() }),
@@ -221,7 +222,7 @@ export function AuthProvider({ children }) {
     const refresh = getRefreshToken()
     if (refresh) {
       try {
-        await fetch('/api/auth/logout', {
+        await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refresh }),
