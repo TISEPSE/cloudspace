@@ -5,7 +5,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { useLocalPref } from "../hooks/useLocalPref";
-import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend } from "../lib/backendUrl";
+import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend, apiUrl } from "../lib/backendUrl";
 
 /* ─── Données ─── */
 
