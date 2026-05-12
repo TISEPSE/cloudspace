@@ -1,11 +1,19 @@
 name: Build & Push Docker images
 
+# Workflow desactive temporairement (publication Docker Hub) :
+# tant que l'application n'a pas ete revue niveau securite, on ne
+# diffuse pas d'image publique. Pour reactiver : retirer le `if: false`
+# du job et remettre le trigger `push: branches: [main]` ci-dessous.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
 
 jobs:
   build-and-push:
+    # Garde-fou supplementaire : meme si quelqu'un declenche manuellement
+    # le workflow, le job sera skip. Supprimer cette ligne pour reactiver.
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
