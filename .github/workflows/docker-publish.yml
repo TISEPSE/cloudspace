@@ -34,9 +34,7 @@ jobs:
           file: ./backend/dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-api:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-api:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -49,8 +47,27 @@ jobs:
           push: true
           build-args: |
             VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-client:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-client:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cloudspace-client:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Cleanup old Docker Hub tags (keep only :latest)
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_PASS: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -e
+          TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \
+            -d "{\"username\":\"$DH_USER\",\"password\":\"$DH_PASS\"}" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+          for image in cloudspace-api cloudspace-client; do
+            echo "→ Nettoyage de $DH_USER/$image"
+            tags=$(curl -s -H "Authorization: JWT $TOKEN" \
+              "https://hub.docker.com/v2/repositories/$DH_USER/$image/tags/?page_size=100" \
+              | jq -r '.results[].name' | grep -v '^latest$' || true)
+            for tag in $tags; do
+              echo "   - delete $image:$tag"
+              curl -s -X DELETE -H "Authorization: JWT $TOKEN" \
+                "https://hub.docker.com/v2/repositories/$DH_USER/$image/tags/$tag/" > /dev/null
+            done
+          done

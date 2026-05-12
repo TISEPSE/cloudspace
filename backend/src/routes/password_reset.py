@@ -54,10 +54,10 @@ def forgot_password():
     email = data.get('email', '').strip().lower()
 
     if not email:
-        return jsonify({'error': 'Email is required'}), 400
+        return jsonify({'error': 'L\'adresse e-mail est requise'}), 400
 
     # Always return 200 to avoid email enumeration
-    generic_response = jsonify({'message': 'If an account with this email exists, a reset link has been sent.'})
+    generic_response = jsonify({'message': 'Si un compte avec cet e-mail existe, un lien de réinitialisation a été envoyé.'})
 
     user = User.query.filter_by(email=email).first()
     if not user:
@@ -74,7 +74,7 @@ def forgot_password():
         db.session.add(pr)
         db.session.commit()
         return jsonify({
-            'message': 'SMTP not configured. Use the token below to reset your password.',
+            'message': 'SMTP non configuré. Utilisez le token ci-dessous pour réinitialiser votre mot de passe.',
             'reset_token': raw_token,
         }), 200
 
@@ -99,25 +99,25 @@ def reset_password():
     new_password = data.get('new_password', '')
 
     if not token or not new_password:
-        return jsonify({'error': 'token and new_password are required'}), 400
+        return jsonify({'error': 'Le token et le nouveau mot de passe sont requis'}), 400
 
     if len(new_password) < 8:
-        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        return jsonify({'error': 'Le mot de passe doit contenir au moins 8 caractères'}), 400
 
     pr = PasswordResetToken.query.filter_by(token=token, used=False).first()
     if not pr:
-        return jsonify({'error': 'Invalid or already used token'}), 400
+        return jsonify({'error': 'Token invalide ou déjà utilisé'}), 400
 
     now = datetime.now(timezone.utc)
     expires = pr.expires_at
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     if now > expires:
-        return jsonify({'error': 'Token has expired'}), 400
+        return jsonify({'error': 'Token expiré'}), 400
 
     pr.used = True
     user = db.session.get(User, pr.user_id)
     user.password_hash = generate_password_hash(new_password)
     db.session.commit()
 
-    return jsonify({'message': 'Password reset successfully. You can now log in.'})
+    return jsonify({'message': 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.'})

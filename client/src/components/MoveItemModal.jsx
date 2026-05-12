@@ -57,9 +57,9 @@ export default function MoveItemModal({ item, initialFolderId, onClose, onMoved 
   const isEmpty = !loading && folders.length === 0 && files.length === 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full max-w-sm mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-border-dark">

@@ -6,6 +6,7 @@ import { apiFetch, downloadFile } from '../lib/api'
 import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
+import { shareItemNative } from '../lib/share'
 
 function FolderRow({ folder, onAction, onOpen }) {
   return (
@@ -138,13 +139,16 @@ export default function Starred() {
       case 'open':
         navigate(`/drive/folder/${item.id}`)
         break
+      case 'share_native':
+        shareItemNative(item).catch(() => {})
+        break
     }
   }, [fetchStarred, navigate])
 
   const isEmpty = !loading && folders.length === 0 && files.length === 0
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex flex-col">
       <div className="flex items-center gap-2 mb-6">
         <div className="flex items-center rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden">
           <button

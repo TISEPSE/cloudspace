@@ -10,7 +10,7 @@ drive_bp = Blueprint('drive', __name__)
 
 def build_breadcrumbs(folder):
     """Build breadcrumb trail from a folder up to root."""
-    crumbs = [{'id': None, 'name': 'My Drive'}]
+    crumbs = [{'id': None, 'name': 'Mon Drive'}]
     if folder is None:
         return crumbs
 
@@ -108,7 +108,7 @@ def drive_contents():
     result = {
         'current_folder': {
             'id': current_folder.id if current_folder else None,
-            'name': current_folder.name if current_folder else 'My Drive',
+            'name': current_folder.name if current_folder else 'Mon Drive',
             'parent_id': current_folder.parent_id if current_folder else None,
         },
         'breadcrumbs': breadcrumbs,
@@ -127,9 +127,9 @@ def create_folder():
     parent_id = data.get('parent_id')
 
     if not name:
-        return jsonify({'error': 'Folder name is required'}), 400
+        return jsonify({'error': 'Le nom du dossier est requis'}), 400
     if len(name) > 255:
-        return jsonify({'error': 'Folder name must be 255 characters or less'}), 400
+        return jsonify({'error': 'Le nom du dossier ne peut pas dépasser 255 caractères'}), 400
 
     if parent_id in ('null', '', 'undefined', None):
         parent_id = None
@@ -144,7 +144,7 @@ def create_folder():
     ).first()
 
     if existing:
-        return jsonify({'error': 'Folder name already exists in this location'}), 400
+        return jsonify({'error': 'Un dossier avec ce nom existe déjà à cet emplacement'}), 400
 
     folder = File(
         name=name,

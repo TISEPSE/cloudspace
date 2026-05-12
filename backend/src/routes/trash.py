@@ -23,7 +23,7 @@ def list_trash():
             parent = db.session.get(File, f.original_parent_id)
             if parent:
                 return parent.name
-        return 'My Drive'
+        return 'Mon Drive'
 
     return jsonify({
         'items': [{
@@ -50,7 +50,7 @@ def restore_item(file_id):
         id=file_id, owner_id=g.current_user_id, is_trashed=True
     ).first()
     if not f:
-        return jsonify({'error': 'Item not found in trash'}), 404
+        return jsonify({'error': 'Élément introuvable dans la corbeille'}), 404
 
     f.is_trashed = False
     f.parent_id = f.original_parent_id
@@ -90,7 +90,7 @@ def delete_permanently(file_id):
         id=file_id, owner_id=g.current_user_id, is_trashed=True
     ).first()
     if not f:
-        return jsonify({'error': 'Item not found in trash'}), 404
+        return jsonify({'error': 'Élément introuvable dans la corbeille'}), 404
 
     freed = _delete_file_tree(f)
 

@@ -13,6 +13,8 @@ def app():
     os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
     os.environ['UPLOAD_FOLDER'] = '/tmp/cloudspace_test_uploads'
     os.environ['RATELIMIT_ENABLED'] = 'False'
+    os.environ['CLAMAV_ENABLED'] = 'false'
+    os.environ['ALLOWED_ORIGINS'] = 'http://localhost:5173'
     os.makedirs('/tmp/cloudspace_test_uploads/files', exist_ok=True)
     os.makedirs('/tmp/cloudspace_test_uploads/avatars', exist_ok=True)
     os.makedirs('/tmp/cloudspace_test_uploads/previews', exist_ok=True)

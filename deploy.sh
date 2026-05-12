@@ -75,8 +75,10 @@ GITHUB_CALLBACK_URL=https://$DOMAIN/api/github/callback
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 EOF
-  echo "  [✓] .env créé avec des secrets générés aléatoirement"
+  chmod 600 "$APP_DIR/.env"
+  echo "  [✓] .env créé avec des secrets générés aléatoirement (chmod 600)"
 else
+  chmod 600 "$APP_DIR/.env"
   echo "  [=] .env déjà présent, conservation des secrets existants"
 fi
 

@@ -1,12 +1,18 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
+import { useLongPress } from '../hooks/useLongPress'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import SwipeableRow from '../components/SwipeableRow'
+import { shareItemNative } from '../lib/share'
 import FilePreviewModal from '../components/FilePreviewModal'
 import ItemDetailsModal from '../components/ItemDetailsModal'
 import MoveItemModal from '../components/MoveItemModal'
 import ShareModal from '../components/ShareModal'
 import { useUpload } from '../contexts/UploadContext'
+import { useToast } from '../contexts/ToastContext'
 import { apiFetch, getAccessToken, downloadFile } from '../lib/api'
+import { copyImageToClipboard } from '../lib/copyImage'
 import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName, splitNameExt } from '../utils/filename'
@@ -84,10 +90,10 @@ function CreateFolderModal({ open, onClose, onConfirm }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full max-w-md mx-4 overflow-hidden"
+        className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full sm:max-w-md sm:mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -96,7 +102,7 @@ function CreateFolderModal({ open, onClose, onConfirm }) {
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <span className="material-symbols-outlined text-lg text-primary">create_new_folder</span>
             </div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">New Folder</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Nouveau dossier</h3>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
             <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
@@ -105,13 +111,13 @@ function CreateFolderModal({ open, onClose, onConfirm }) {
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Folder name</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nom du dossier</label>
           <input
             ref={inputRef}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Untitled Folder"
+            placeholder="Nouveau dossier"
             className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
           />
           <div className="flex items-center justify-end gap-3 mt-6">
@@ -120,14 +126,14 @@ function CreateFolderModal({ open, onClose, onConfirm }) {
               onClick={onClose}
               className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-border-dark rounded-xl transition-colors"
             >
-              Cancel
+              Annuler
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
               className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Create
+              Créer
             </button>
           </div>
         </form>
@@ -140,19 +146,19 @@ function ConfirmTrashModal({ file, onClose, onConfirm }) {
   if (!file) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full max-w-sm mx-4 overflow-hidden"
+        className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full sm:max-w-sm sm:mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="w-11 h-11 rounded-xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-xl text-red-500">delete</span>
           </div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Move to Trash?</h3>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Déplacer vers la corbeille ?</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-medium text-slate-700 dark:text-slate-300">{file.name}</span> will be moved to the trash. You can restore it within 30 days.
+            <span className="font-medium text-slate-700 dark:text-slate-300">{file.name}</span> sera déplacé dans la corbeille. Vous pouvez le restaurer dans les 30 jours.
           </p>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 pb-5">
@@ -160,13 +166,13 @@ function ConfirmTrashModal({ file, onClose, onConfirm }) {
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-border-dark rounded-xl transition-colors"
           >
-            Cancel
+            Annuler
           </button>
           <button
             onClick={onConfirm}
             className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
           >
-            Move to Trash
+            Mettre à la corbeille
           </button>
         </div>
       </div>
@@ -205,10 +211,10 @@ function RenameModal({ file, onClose, onConfirm }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full max-w-md mx-4 overflow-hidden"
+        className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl shadow-black/20 w-full sm:max-w-md sm:mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-border-dark">
@@ -216,7 +222,7 @@ function RenameModal({ file, onClose, onConfirm }) {
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <span className="material-symbols-outlined text-lg text-primary">edit</span>
             </div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Rename</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Renommer</h3>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
             <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
@@ -277,9 +283,9 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-border-dark">
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isLocking ? 'bg-amber-500/10' : 'bg-blue-500/10'}`}>
@@ -289,7 +295,7 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
             </div>
             <div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                {isLocking ? 'Lock folder' : mode === 'open' ? 'Protected folder' : 'Unlock folder'}
+                {isLocking ? 'Verrouiller le dossier' : mode === 'open' ? 'Dossier protégé' : 'Déverrouiller le dossier'}
               </h3>
               <p className="text-xs text-slate-500 truncate max-w-[220px]">{folder.name}</p>
             </div>
@@ -301,10 +307,10 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
 
         <form onSubmit={handleSubmit} className="p-6">
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            {isLocking ? 'Set a password' : 'Enter password'}
+            {isLocking ? 'Définir un mot de passe' : 'Saisir le mot de passe'}
           </label>
           {isLocking && (
-            <p className="text-xs text-slate-500 mb-3">This folder will require a password to open.</p>
+            <p className="text-xs text-slate-500 mb-3">Ce dossier nécessitera un mot de passe pour être ouvert.</p>
           )}
           <div className="relative">
             <input
@@ -312,7 +318,7 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
               type={showPwd ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={isLocking ? 'Minimum 6 characters' : '••••••••'}
+              placeholder={isLocking ? 'Minimum 6 caractères' : '••••••••'}
               className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 pr-11 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
             />
             <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
@@ -326,14 +332,14 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
           )}
           <div className="flex justify-end gap-3 mt-6">
             <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-border-dark rounded-xl transition-colors">
-              Cancel
+              Annuler
             </button>
             <button
               type="submit"
               disabled={!password.trim() || (isLocking && password.length < 4)}
               className={`px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isLocking ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-blue-600'}`}
             >
-              {isLocking ? 'Lock' : mode === 'open' ? 'Open' : 'Unlock'}
+              {isLocking ? 'Verrouiller' : mode === 'open' ? 'Ouvrir' : 'Déverrouiller'}
             </button>
           </div>
         </form>
@@ -343,36 +349,103 @@ function LockFolderModal({ target, onClose, onConfirm, error }) {
 }
 
 
+const TYPE_OPTIONS = [
+  { id: 'all',       label: 'Tous',       icon: 'apps' },
+  { id: 'folders',   label: 'Dossiers',   icon: 'folder' },
+  { id: 'images',    label: 'Images',     icon: 'image' },
+  { id: 'videos',    label: 'Vidéos',     icon: 'videocam' },
+  { id: 'audio',     label: 'Audio',      icon: 'music_note' },
+  { id: 'documents', label: 'Documents',  icon: 'description' },
+  { id: 'archives',  label: 'Archives',   icon: 'folder_zip' },
+]
+const EMPTY_FILTERS = { type: 'all' }
+
+function isDocumentMime(mime) {
+  if (!mime) return false
+  if (mime.startsWith('text/')) return true
+  return [
+    'application/pdf', 'application/json',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ].includes(mime)
+}
+function isArchiveMime(mime) {
+  if (!mime) return false
+  return ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+    'application/gzip', 'application/x-tar', 'application/x-bzip2'].includes(mime)
+}
+
+function FilterPanel({ filters, onFiltersChange, onClose }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-20" onClick={onClose} />
+      <div className="absolute right-0 top-full mt-2 z-30 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-2xl shadow-black/10 w-52 overflow-hidden">
+        {TYPE_OPTIONS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => { onFiltersChange({ type: t.id }); onClose() }}
+            className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${
+              filters.type === t.id
+                ? 'text-primary font-semibold bg-primary/5'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-border-dark'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+            {t.label}
+            {filters.type === t.id && (
+              <span className="ml-auto material-symbols-outlined text-[16px] text-primary">check</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
 function DriveContentSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="mb-8">
-        <div className="w-16 h-3 bg-slate-200 dark:bg-border-dark rounded mb-3" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="flex items-center p-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg">
-              <div className="w-7 h-7 bg-slate-200 dark:bg-border-dark rounded mr-3 flex-shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="w-28 h-3.5 bg-slate-200 dark:bg-border-dark rounded" />
-                <div className="w-14 h-2.5 bg-slate-100 dark:bg-border-dark/60 rounded" />
-              </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+        {[...Array(18)].map((_, i) => (
+          <div key={i} className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2">
+            <div className="aspect-[4/3] bg-slate-100 dark:bg-border-dark/50 rounded-md mb-2" />
+            <div className="space-y-1.5">
+              <div className="w-3/4 h-3 bg-slate-200 dark:bg-border-dark rounded" />
+              <div className="w-1/2 h-2.5 bg-slate-100 dark:bg-border-dark/60 rounded" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-      <div>
-        <div className="w-12 h-3 bg-slate-200 dark:bg-border-dark rounded mb-3" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2">
-              <div className="aspect-[4/3] bg-slate-100 dark:bg-border-dark/50 rounded-md mb-2" />
-              <div className="space-y-1.5">
-                <div className="w-3/4 h-3 bg-slate-200 dark:bg-border-dark rounded" />
-                <div className="w-1/2 h-2.5 bg-slate-100 dark:bg-border-dark/60 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
+    </div>
+  )
+}
+
+function PullRefreshIndicator({ pullDistance, isRefreshing, threshold }) {
+  if (pullDistance <= 0 && !isRefreshing) return null
+  const progress = Math.min(1, pullDistance / threshold)
+  const willRefresh = pullDistance >= threshold
+  return (
+    <div
+      className="md:hidden absolute left-0 right-0 top-0 flex items-center justify-center pointer-events-none z-30"
+      style={{
+        height: Math.max(pullDistance, isRefreshing ? threshold : 0),
+        transition: isRefreshing || pullDistance === 0 ? 'height 200ms ease-out' : 'none',
+      }}
+    >
+      <div
+        className="w-9 h-9 rounded-full bg-white dark:bg-surface-dark shadow-md border border-slate-200 dark:border-border-dark flex items-center justify-center"
+        style={{ opacity: Math.max(0.3, progress) }}
+      >
+        <span
+          className={`material-symbols-outlined text-[20px] text-primary ${isRefreshing ? 'animate-spin' : ''}`}
+          style={!isRefreshing ? { transform: `rotate(${progress * 180}deg)`, transition: 'transform 80ms linear' } : undefined}
+        >
+          {isRefreshing ? 'progress_activity' : (willRefresh ? 'refresh' : 'arrow_downward')}
+        </span>
       </div>
     </div>
   )
@@ -400,15 +473,15 @@ function DropZoneOverlay({ isDragging, dragFileCount }) {
                   <span className="material-symbols-outlined text-4xl text-primary animate-bounce" style={{ animationDuration: '1.5s' }}>cloud_upload</span>
                 </div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-1.5">Drop to upload</h3>
+              <h3 className="text-xl font-bold text-white mb-1.5">Déposez pour importer</h3>
               <p className="text-sm text-slate-400 mb-3">
-                Files will be added to <span className="text-primary font-medium">My Drive</span>
+                Les fichiers seront ajoutés à <span className="text-primary font-medium">Mon Drive</span>
               </p>
               {dragFileCount > 0 && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
                   <span className="material-symbols-outlined text-sm text-primary">draft</span>
                   <span className="text-xs font-medium text-primary">
-                    {dragFileCount} {dragFileCount === 1 ? 'file' : 'files'} selected
+                    {dragFileCount} fichier{dragFileCount > 1 ? 's' : ''} sélectionné{dragFileCount > 1 ? 's' : ''}
                   </span>
                 </div>
               )}
@@ -423,9 +496,12 @@ function DropZoneOverlay({ isDragging, dragFileCount }) {
 function FolderCard({ folder, onOpen, onAction, onHover, onItemDragStart, onItemDragEnd, isGhost, draggedItem, onDropOnFolder }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const canDrop = draggedItem && draggedItem.id !== folder.id
+  const menuRef = useRef(null)
+  const longPress = useLongPress(() => menuRef.current?.open())
 
   return (
     <div
+      {...longPress}
       draggable="true"
       onDragStart={(e) => {
         e.dataTransfer.setData('application/x-cloudspace-item', folder.id)
@@ -440,24 +516,31 @@ function FolderCard({ folder, onOpen, onAction, onHover, onItemDragStart, onItem
       onClick={() => onOpen(folder)}
       onMouseEnter={() => onHover({ ...folder, is_folder: true })}
       onMouseLeave={() => onHover(null)}
-      className={`flex items-center py-3 px-3 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] cursor-grab transition-all shadow-sm group
+      className={`group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-grab select-none
         ${isGhost ? 'opacity-40' : ''}
         ${isDragOver ? 'ring-2 ring-primary bg-primary/5 dark:bg-primary/10 scale-[1.02]' : ''}
       `}
     >
-      <div className="relative flex items-center justify-center mr-2 flex-shrink-0">
-        <span className={`material-symbols-outlined text-2xl ${folder.icon_color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
+      <div className="aspect-[4/3] bg-amber-50 dark:bg-amber-500/10 rounded-md mb-2 flex items-center justify-center border border-slate-100 dark:border-border-dark relative">
+        <span className={`material-symbols-outlined text-4xl ${folder.icon_color} group-hover:scale-110 transition-transform duration-300`} style={{ fontVariationSettings: "'FILL' 1" }}>{folder.icon}</span>
         {folder.is_locked && (
-          <span className="absolute -bottom-0.5 -right-1 material-symbols-outlined text-[10px] text-slate-400 dark:text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+          <div className="absolute bottom-1.5 right-1.5">
+            <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+          </div>
+        )}
+        {folder.is_starred && (
+          <div className="absolute top-1.5 right-1.5 z-10">
+            <span className="material-symbols-outlined text-[14px] text-amber-400 drop-shadow" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+          </div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{folder.name}</p>
+      <div className="flex items-center">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={folder.name}>{folder.name}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{folder.items_count} élément{folder.items_count !== 1 ? 's' : ''}</p>
+        </div>
+        <FileContextMenu ref={menuRef} isFolder isLocked={folder.is_locked} isStarred={folder.is_starred} onAction={(id) => onAction(id, folder)} />
       </div>
-      {folder.is_starred && (
-        <span className="material-symbols-outlined text-[14px] text-amber-400 mr-1 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-      )}
-      <FileContextMenu isFolder isLocked={folder.is_locked} isStarred={folder.is_starred} onAction={(id) => onAction(id, folder)} />
     </div>
   )
 }
@@ -468,8 +551,11 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
   const isVideo = file.has_content && file.mime_type?.startsWith('video/')
   const [imgLoaded, setImgLoaded] = useState(false)
   const displayName = formatDisplayName(file.name, showExt)
+  const menuRef = useRef(null)
+  const longPress = useLongPress(() => menuRef.current?.open())
   return (
     <div
+      {...longPress}
       draggable="true"
       onDragStart={(e) => {
         e.dataTransfer.setData('application/x-cloudspace-item', file.id)
@@ -480,7 +566,7 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
       onClick={() => onPreview(file)}
       onMouseEnter={() => onHover({ ...file, is_folder: false })}
       onMouseLeave={() => onHover(null)}
-      className={`group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-grab ${isGhost ? 'opacity-40' : ''}`}
+      className={`group relative bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-md transition-all cursor-grab select-none ${isGhost ? 'opacity-40' : ''}`}
     >
       <div className={`aspect-[4/3] ${file.icon_bg} rounded-md mb-2 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-border-dark relative`}>
         {isVideo ? (
@@ -517,19 +603,20 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
           <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{file.formatted_size} &bull; {file.formatted_date}</p>
         </div>
-        <FileContextMenu isStarred={file.is_starred} onAction={(id) => onAction(id, file)} />
+        <FileContextMenu ref={menuRef} isStarred={file.is_starred} isImage={isImage} onAction={(id) => onAction(id, file)} />
       </div>
     </div>
   )
 }
 
-function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect, draggedItem, onDropOnFolder }) {
+function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputRef, onFileSelect, draggedItem, onDropOnFolder, filters, onFiltersChange, activeFilterCount }) {
   const [dragOverCrumbId, setDragOverCrumbId] = useState(null)
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
 
   return (
-    <div className={`flex items-center mb-6 ${breadcrumbs.length > 1 ? 'justify-between' : 'gap-2'}`}>
+    <div className={`flex flex-col md:flex-row md:items-center gap-3 mb-6 ${breadcrumbs.length > 1 ? 'md:justify-between' : ''}`}>
       {breadcrumbs.length > 1 && (
-        <nav aria-label="Breadcrumb" className="flex">
+        <nav aria-label="Breadcrumb" className="flex overflow-x-auto -mx-1 px-1 scrollbar-thin">
           <ol className="inline-flex items-center space-x-0.5">
             {breadcrumbs.map((crumb, index) => {
               const isLast = index === breadcrumbs.length - 1
@@ -567,14 +654,14 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
         </nav>
       )}
 
-      <div className="flex items-center gap-2">
-        <button onClick={onNewFolder} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary transition-colors">
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={onNewFolder} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary active:bg-slate-100 dark:active:bg-border-dark/70 transition-colors">
           <span className="material-symbols-outlined">create_new_folder</span>
-          Nouveau dossier
+          <span className="hidden sm:inline">Nouveau dossier</span>
         </button>
-        <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary transition-colors">
+        <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary active:bg-slate-100 dark:active:bg-border-dark/70 transition-colors">
           <span className="material-symbols-outlined">upload</span>
-          Importer
+          <span className="hidden sm:inline">Importer</span>
         </button>
         <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onFileSelect} />
 
@@ -583,18 +670,67 @@ function DriveToolbar({ breadcrumbs, view, onViewChange, onNewFolder, fileInputR
             <button
               key={v}
               onClick={() => onViewChange(v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === v ? 'text-primary bg-primary/5 dark:bg-primary/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === v ? 'text-primary bg-primary/5 dark:bg-primary/10' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary active:bg-slate-100 dark:active:bg-border-dark/70'}`}
             >
               <span className="material-symbols-outlined">{v === 'grid' ? 'grid_view' : 'view_list'}</span>
-              {v === 'grid' ? 'Grid' : 'List'}
+              <span className="hidden sm:inline">{v === 'grid' ? 'Grille' : 'Liste'}</span>
             </button>
           ))}
         </div>
 
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark transition-colors">
-          <span className="material-symbols-outlined">filter_list</span>
-          Filter
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowFilterPanel(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors ${
+              activeFilterCount > 0
+                ? 'text-primary bg-primary/5 border-primary/30 dark:border-primary/40'
+                : 'text-slate-600 dark:text-slate-300 border-slate-200 dark:border-border-dark hover:bg-slate-50 dark:hover:bg-border-dark hover:text-primary active:bg-slate-100 dark:active:bg-border-dark/70'
+            }`}
+          >
+            <span className="material-symbols-outlined">filter_list</span>
+            <span className="hidden sm:inline">{TYPE_OPTIONS.find(t => t.id === filters.type)?.label ?? 'Filtrer'}</span>
+            <span className={`material-symbols-outlined text-[16px] opacity-60 transition-transform duration-200 ${showFilterPanel ? 'rotate-180' : ''}`}>expand_more</span>
+          </button>
+          {showFilterPanel && (
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              onClose={() => setShowFilterPanel(false)}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MobileRow({ icon, iconColor, iconBg, iconFilled, badge, name, subtitle, isStarred, contextMenu }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <div className={`relative w-10 h-10 rounded-lg ${iconBg || 'bg-slate-100 dark:bg-slate-700/30'} flex items-center justify-center flex-shrink-0`}>
+        <span
+          className={`material-symbols-outlined text-[22px] ${iconColor}`}
+          style={iconFilled ? { fontVariationSettings: "'FILL' 1" } : undefined}
+        >
+          {icon}
+        </span>
+        {badge && (
+          <span className="absolute -bottom-0.5 -right-0.5 material-symbols-outlined text-[12px] text-slate-400 dark:text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{name}</p>
+          {isStarred && (
+            <span className="material-symbols-outlined text-[14px] text-amber-400 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+          )}
+        </div>
+        {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>}
+      </div>
+      <div onClick={e => e.stopPropagation()}>
+        {contextMenu}
       </div>
     </div>
   )
@@ -604,12 +740,65 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onHover
   const [dragOverId, setDragOverId] = useState(null)
   return (
     <div className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
-      <table className="w-full text-left border-collapse">
+      {/* Mobile : liste avec swipe-actions */}
+      <ul className="sm:hidden divide-y divide-slate-100 dark:divide-border-dark">
+        {folders.map((folder) => (
+          <li key={folder.id}>
+            <SwipeableRow
+              onClick={() => onFolderOpen(folder)}
+              onSwipeRight={() => onFolderAction('star', folder)}
+              rightAction={{ icon: folder.is_starred ? 'star_border' : 'star', color: 'bg-amber-500', label: folder.is_starred ? 'Retirer' : 'Étoile' }}
+              onSwipeLeft={() => onFolderAction('trash', folder)}
+              leftAction={{ icon: 'delete', color: 'bg-red-500', label: 'Corbeille' }}
+            >
+              <MobileRow
+                icon={folder.icon}
+                iconColor={folder.icon_color}
+                iconBg="bg-amber-50 dark:bg-amber-500/10"
+                iconFilled
+                badge={folder.is_locked ? 'lock' : null}
+                name={folder.name}
+                subtitle={`${folder.items_count} élément${folder.items_count !== 1 ? 's' : ''}`}
+                isStarred={folder.is_starred}
+                contextMenu={
+                  <FileContextMenu isFolder isLocked={folder.is_locked} isStarred={folder.is_starred} onAction={(id) => onFolderAction(id, folder)} />
+                }
+              />
+            </SwipeableRow>
+          </li>
+        ))}
+        {files.map((file) => (
+          <li key={file.id}>
+            <SwipeableRow
+              onClick={() => onFilePreview(file)}
+              onSwipeRight={() => onFileAction('star', file)}
+              rightAction={{ icon: file.is_starred ? 'star_border' : 'star', color: 'bg-amber-500', label: file.is_starred ? 'Retirer' : 'Étoile' }}
+              onSwipeLeft={() => onFileAction('trash', file)}
+              leftAction={{ icon: 'delete', color: 'bg-red-500', label: 'Corbeille' }}
+            >
+              <MobileRow
+                icon={file.icon}
+                iconColor={file.icon_color}
+                iconBg={file.icon_bg}
+                name={formatDisplayName(file.name, showExt)}
+                subtitle={file.formatted_size}
+                isStarred={file.is_starred}
+                contextMenu={
+                  <FileContextMenu isImage={file.has_content && file.mime_type?.startsWith('image/')} isStarred={file.is_starred} onAction={(id) => onFileAction(id, file)} />
+                }
+              />
+            </SwipeableRow>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop / tablette : table classique */}
+      <table className="hidden sm:table w-full text-left border-collapse">
         <thead className="bg-slate-50 dark:bg-[#151e26] border-b border-slate-200 dark:border-border-dark">
           <tr>
-            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[40%]">Name</th>
-            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[20%] hidden md:table-cell">Last Modified</th>
-            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[15%] hidden sm:table-cell">Size</th>
+            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[40%]">Nom</th>
+            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[20%] hidden md:table-cell">Modifié le</th>
+            <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[15%] hidden sm:table-cell">Taille</th>
             <th className="px-5 py-3 w-[5%]"></th>
           </tr>
         </thead>
@@ -646,7 +835,7 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onHover
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white">{folder.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{folder.items_count} items</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{folder.items_count} élément{folder.items_count !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
               </td>
@@ -683,7 +872,7 @@ function DriveListSection({ folders, files, onFolderOpen, onFilePreview, onHover
               <td className="px-5 py-3 hidden md:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_date}</span></td>
               <td className="px-5 py-3 hidden sm:table-cell"><span className="text-sm text-slate-500 dark:text-slate-400">{file.formatted_size}</span></td>
               <td className="px-5 py-3 text-right">
-                <FileContextMenu onAction={(id) => onFileAction(id, file)} />
+                <FileContextMenu isImage={file.has_content && file.mime_type?.startsWith('image/')} onAction={(id) => onFileAction(id, file)} />
               </td>
             </tr>
           ))}
@@ -703,7 +892,7 @@ export default function MyDrive() {
   const [draggedItem, setDraggedItem] = useState(null)
   const [folders, setFolders] = useState([])
   const [files, setFiles] = useState([])
-  const [breadcrumbs, setBreadcrumbs] = useState([{ id: null, name: 'My Drive' }])
+  const [breadcrumbs, setBreadcrumbs] = useState([{ id: null, name: 'Mon Drive' }])
   const [ready, setReady] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
@@ -722,7 +911,26 @@ export default function MyDrive() {
   const hoveredItemRef = useRef(null)
   const setHoveredItem = useCallback((item) => { hoveredItemRef.current = item }, [])
   const { uploadFiles, queue, setCurrentFolderId } = useUpload()
+  const { showToast } = useToast()
   const [showExt] = useLocalPref('cloudspace_show_extensions', true)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+
+  const activeFilterCount = filters.type !== 'all' ? 1 : 0
+
+  const filteredFolders = folders.filter(folder => {
+    if (filters.type !== 'all' && filters.type !== 'folders') return false
+    return true
+  })
+
+  const filteredFiles = files.filter(file => {
+    if (filters.type === 'folders')   return false
+    if (filters.type === 'images'    && !file.mime_type?.startsWith('image/')) return false
+    if (filters.type === 'videos'    && !file.mime_type?.startsWith('video/')) return false
+    if (filters.type === 'audio'     && !file.mime_type?.startsWith('audio/')) return false
+    if (filters.type === 'documents' && !isDocumentMime(file.mime_type)) return false
+    if (filters.type === 'archives'  && !isArchiveMime(file.mime_type)) return false
+    return true
+  })
 
   // Synchronise le dossier actif côté UploadContext (sidebar/galerie pourront uploader ici)
   useEffect(() => {
@@ -737,7 +945,7 @@ export default function MyDrive() {
       const data = await res.json()
       setFolders(data.folders || [])
       setFiles(data.files || [])
-      setBreadcrumbs(data.breadcrumbs || [{ id: null, name: 'My Drive' }])
+      setBreadcrumbs(data.breadcrumbs || [{ id: null, name: 'Mon Drive' }])
     } catch (err) {
       console.error('Failed to fetch drive contents:', err)
     } finally {
@@ -757,6 +965,9 @@ export default function MyDrive() {
     setShowSkeleton(false)
     fetchContents()
   }, [fetchContents])
+
+  // Pull-to-refresh (mobile)
+  const { pullDistance, isRefreshing, threshold } = usePullToRefresh(dropZoneRef, fetchContents)
 
   useEffect(() => {
     if (!ready) return
@@ -901,12 +1112,20 @@ export default function MyDrive() {
       case 'details': setDetailsItemId(file.id); break
       case 'move': setMoveTarget(file); break
       case 'share': setShareTarget(file); break
+      case 'share_native':
+        shareItemNative({ ...file, is_folder: false }).catch(() => showToast('Partage indisponible', 'error'))
+        break
       case 'trash': setTrashTarget(file); break
       case 'download':
         downloadFile(file.id, file.name).catch(() => {})
         break
+      case 'copy_image':
+        copyImageToClipboard(file.id)
+          .then(() => showToast('Image copiée dans le presse-papiers', 'success'))
+          .catch(() => showToast('Impossible de copier l\'image', 'error'))
+        break
     }
-  }, [toggleStar])
+  }, [toggleStar, showToast])
 
   const handleFolderAction = useCallback((actionId, folder) => {
     switch (actionId) {
@@ -924,12 +1143,15 @@ export default function MyDrive() {
       case 'details': setDetailsItemId(folder.id); break
       case 'move': setMoveTarget(folder); break
       case 'share': setShareTarget(folder); break
+      case 'share_native':
+        shareItemNative({ ...folder, is_folder: true }).catch(() => showToast('Partage indisponible', 'error'))
+        break
       case 'download':
         downloadFile(folder.id, folder.name + '.zip', true).catch(() => {})
         break
       case 'trash': setTrashTarget(folder); break
     }
-  }, [navigate, toggleStar, unlockedFolders])
+  }, [navigate, toggleStar, unlockedFolders, showToast])
 
   const handleLockConfirm = useCallback(async (password) => {
     if (!lockTarget) return
@@ -947,7 +1169,7 @@ export default function MyDrive() {
           navigate(`/drive/folder/${folder.id}`)
         } else {
           const d = await res.json()
-          setLockError(d.error || 'Incorrect password')
+          setLockError(d.error || 'Mot de passe incorrect')
         }
       } else {
         const res = await apiFetch(`/api/files/${folder.id}/lock`, {
@@ -961,10 +1183,10 @@ export default function MyDrive() {
           fetchContents()
         } else {
           const d = await res.json()
-          setLockError(d.error || 'Incorrect password')
+          setLockError(d.error || 'Mot de passe incorrect')
         }
       }
-    } catch { setLockError('An error occurred') }
+    } catch { setLockError('Une erreur est survenue') }
   }, [lockTarget, navigate, fetchContents, unlockedFolders])
 
   useEffect(() => {
@@ -1003,7 +1225,7 @@ export default function MyDrive() {
   return (
     <div
       ref={dropZoneRef}
-      className="flex-1 overflow-y-auto p-6 relative"
+      className="flex-1 overflow-y-auto p-3 sm:p-6 relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -1012,6 +1234,9 @@ export default function MyDrive() {
       {draggedItem && <style>{'* { cursor: grabbing !important; }'}</style>}
       {/* Drop Zone Overlay */}
       <DropZoneOverlay isDragging={isDragging} dragFileCount={dragFileCount} />
+
+      {/* Pull-to-refresh indicator (mobile) */}
+      <PullRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={threshold} />
 
       {/* Toolbar — toujours visible : le fil d'Ariane ne clignote plus à la navigation */}
       <DriveToolbar
@@ -1023,6 +1248,9 @@ export default function MyDrive() {
         onFileSelect={handleFileInputChange}
         draggedItem={draggedItem}
         onDropOnFolder={handleDropOnFolder}
+        filters={filters}
+        onFiltersChange={setFilters}
+        activeFilterCount={activeFilterCount}
       />
 
       {!ready ? (showSkeleton ? <DriveContentSkeleton /> : null) : (<>
@@ -1054,13 +1282,29 @@ export default function MyDrive() {
         </div>
       )}
 
-      {/* Folders - only in grid view, only if there are folders */}
-      {view === 'grid' && folders.length > 0 && (
-        <section className="mb-8">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">Dossiers</h3>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-            {folders.map((folder) => (
-              <FolderCard
+      {/* Empty state — filtres sans résultats */}
+      {(folders.length > 0 || files.length > 0) && filteredFolders.length === 0 && filteredFiles.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-28 text-center">
+          <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">filter_list_off</span>
+          <p className="text-base font-semibold text-slate-600 dark:text-slate-300 mb-1">Aucun résultat</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mb-5">Aucun élément ne correspond aux filtres sélectionnés.</p>
+          <button
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">filter_list_off</span>
+            Réinitialiser les filtres
+          </button>
+        </div>
+      )}
+
+      {/* Grille unifiée — dossiers + fichiers mélangés */}
+      {(filteredFolders.length > 0 || filteredFiles.length > 0) && (
+        <section>
+          {view === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+              {filteredFolders.map((folder) => (
+                <FolderCard
                   key={folder.id}
                   folder={folder}
                   onOpen={handleFolderClick}
@@ -1072,42 +1316,25 @@ export default function MyDrive() {
                   draggedItem={draggedItem}
                   onDropOnFolder={handleDropOnFolder}
                 />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Files */}
-      {(folders.length > 0 || files.length > 0) && (
-        <section>
-          {(view === 'grid' ? files.length > 0 : true) && (
-            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">
-              {view === 'grid' ? 'Fichiers' : 'Tous les éléments'}
-            </h3>
-          )}
-
-          {view === 'grid' ? (
-            files.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-                {files.map((file) => (
-                  <FileCard
-                    key={file.id}
-                    file={file}
-                    onPreview={setPreviewFile}
-                    onAction={handleFileAction}
-                    showExt={showExt}
-                    onHover={setHoveredItem}
-                    onItemDragStart={handleItemDragStart}
-                    onItemDragEnd={handleItemDragEnd}
-                    isGhost={draggedItem?.id === file.id}
-                  />
-                ))}
-              </div>
-            ) : folders.length > 0 ? null : null
+              ))}
+              {filteredFiles.map((file) => (
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  onPreview={setPreviewFile}
+                  onAction={handleFileAction}
+                  showExt={showExt}
+                  onHover={setHoveredItem}
+                  onItemDragStart={handleItemDragStart}
+                  onItemDragEnd={handleItemDragEnd}
+                  isGhost={draggedItem?.id === file.id}
+                />
+              ))}
+            </div>
           ) : (
             <DriveListSection
-              folders={folders}
-              files={files}
+              folders={filteredFolders}
+              files={filteredFiles}
               onFolderOpen={handleFolderClick}
               onFilePreview={setPreviewFile}
               onFileAction={handleFileAction}

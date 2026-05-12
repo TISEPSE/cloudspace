@@ -8,6 +8,7 @@ from src.extensions import db
 from src.models import File, User, ActivityLog, SharedFile
 from src.utils import get_icon_for_mime, format_file_size, format_relative_time
 from src.auth import login_required, media_or_login_required
+from src.clamav import scan_file as antivirus_scan, ClamAVError, is_enabled as antivirus_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -40,30 +41,30 @@ BLOCKED_MIME_TYPES = {'image/svg+xml', 'text/html', 'application/xhtml+xml'}
 @login_required
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+        return jsonify({'error': 'Aucun fichier fourni'}), 400
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+        return jsonify({'error': 'Aucun fichier sélectionné'}), 400
 
     # Sanitize filename
     original_name = file.filename
     safe_name = secure_filename(file.filename)
     if not safe_name:
-        return jsonify({'error': 'Invalid filename'}), 400
+        return jsonify({'error': 'Nom de fichier invalide'}), 400
 
     # Validate extension
     ext = os.path.splitext(safe_name)[1].lower()
     if ext and ext not in ALLOWED_EXTENSIONS:
-        return jsonify({'error': f'File type {ext} is not allowed'}), 400
+        return jsonify({'error': f'Type de fichier {ext} non autorisé'}), 400
 
     # Validate MIME type via magic bytes (ignores browser-supplied Content-Type)
     real_mime = magic.from_buffer(file.read(2048), mime=True)
     file.seek(0)
     if real_mime in BLOCKED_MIME_TYPES:
-        return jsonify({'error': f'File type {real_mime} is not allowed'}), 400
+        return jsonify({'error': f'Type de fichier {real_mime} non autorisé'}), 400
     if not any(real_mime.startswith(p) for p in ALLOWED_MIME_PREFIXES):
-        return jsonify({'error': f'File type {real_mime} is not allowed'}), 400
+        return jsonify({'error': f'Type de fichier {real_mime} non autorisé'}), 400
     mime_type = real_mime
 
     # Check file size
@@ -71,12 +72,12 @@ def upload_file():
     file_size = file.tell()
     file.seek(0)
     if file_size > MAX_FILE_SIZE:
-        return jsonify({'error': 'File too large. Maximum size is 100 MB'}), 413
+        return jsonify({'error': 'Fichier trop volumineux. Taille maximale : 100 Mo'}), 413
 
     # Check user storage quota
     user = db.session.get(User, g.current_user_id)
     if user and (user.storage_used + file_size) > user.storage_limit:
-        return jsonify({'error': 'Storage quota exceeded. Free up space or upgrade your plan.'}), 413
+        return jsonify({'error': 'Quota de stockage dépassé. Libérez de l\'espace ou améliorez votre offre.'}), 413
 
     parent_id = request.form.get('parent_id')
     if parent_id in ('null', '', 'undefined', 'None'):
@@ -91,6 +92,19 @@ def upload_file():
     stored_name = file_uuid + ext
     save_path = os.path.join(user_dir, stored_name)
     file.save(save_path)
+
+    # Scan antivirus (fail-closed : si ClamAV est activé mais injoignable, on refuse)
+    if antivirus_enabled():
+        try:
+            clean, signature = antivirus_scan(save_path)
+        except ClamAVError as e:
+            os.remove(save_path)
+            logger.error('Upload rejected (ClamAV error): %s', e)
+            return jsonify({'error': 'Antivirus indisponible, réessayez plus tard'}), 503
+        if not clean:
+            os.remove(save_path)
+            logger.warning('Upload rejected (malware): %s detected %s', original_name, signature)
+            return jsonify({'error': f'Fichier infecté détecté : {signature}'}), 422
 
     file_size = os.path.getsize(save_path)
 
@@ -145,7 +159,7 @@ def trash_file(file_id):
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     now = datetime.now(timezone.utc)
     f.original_parent_id = f.parent_id
@@ -187,10 +201,10 @@ def _trash_children(folder_id, now):
 def download_file(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f or not f.storage_path:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     if not os.path.exists(f.storage_path):
-        return jsonify({'error': 'File not found on disk'}), 404
+        return jsonify({'error': 'Fichier introuvable sur le disque'}), 404
 
     inline = request.args.get('inline') == 'true'
     logger.info('File downloaded: %s by user %s', f.name, g.current_user_id)
@@ -207,7 +221,7 @@ def download_file(file_id):
 def toggle_star(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     f.is_starred = not f.is_starred
     action = 'file_starred' if f.is_starred else 'file_unstarred'
@@ -233,13 +247,13 @@ def rename_file(file_id):
     new_name = data.get('name', '').strip()
 
     if not new_name:
-        return jsonify({'error': 'Name is required'}), 400
+        return jsonify({'error': 'Le nom est requis'}), 400
     if len(new_name) > 255:
-        return jsonify({'error': 'Name must be 255 characters or less'}), 400
+        return jsonify({'error': 'Le nom ne peut pas dépasser 255 caractères'}), 400
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     # Check duplicate
     existing = File.query.filter(
@@ -251,7 +265,7 @@ def rename_file(file_id):
     ).first()
 
     if existing:
-        return jsonify({'error': 'A file with this name already exists in this location'}), 400
+        return jsonify({'error': 'Un fichier avec ce nom existe déjà à cet emplacement'}), 400
 
     old_name = f.name
     f.name = new_name
@@ -289,22 +303,22 @@ def toggle_lock(file_id):
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id, is_folder=True).first()
     if not f:
-        return jsonify({'error': 'Folder not found'}), 404
+        return jsonify({'error': 'Dossier introuvable'}), 404
 
     data = request.get_json() or {}
     password = data.get('password', '').strip()
 
     if not f.is_locked:
         if not password or len(password) < 6:
-            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+            return jsonify({'error': 'Le mot de passe doit contenir au moins 6 caractères'}), 400
         f.is_locked = True
         f.lock_password_hash = generate_password_hash(password)
         action = 'file_locked'
     else:
         if not password:
-            return jsonify({'error': 'Password is required'}), 400
+            return jsonify({'error': 'Mot de passe requis'}), 400
         if not f.lock_password_hash or not check_password_hash(f.lock_password_hash, password):
-            return jsonify({'error': 'Incorrect password'}), 403
+            return jsonify({'error': 'Mot de passe incorrect'}), 403
         f.is_locked = False
         f.lock_password_hash = None
         action = 'file_unlocked'
@@ -321,7 +335,7 @@ def verify_lock(file_id):
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id, is_folder=True).first()
     if not f:
-        return jsonify({'error': 'Folder not found'}), 404
+        return jsonify({'error': 'Dossier introuvable'}), 404
 
     if not f.is_locked:
         return jsonify({'verified': True})
@@ -329,10 +343,10 @@ def verify_lock(file_id):
     data = request.get_json() or {}
     password = data.get('password', '').strip()
     if not password or not f.lock_password_hash:
-        return jsonify({'error': 'Password is required'}), 400
+        return jsonify({'error': 'Mot de passe requis'}), 400
 
     if not check_password_hash(f.lock_password_hash, password):
-        return jsonify({'verified': False, 'error': 'Incorrect password'}), 403
+        return jsonify({'verified': False, 'error': 'Mot de passe incorrect'}), 403
 
     return jsonify({'verified': True})
 
@@ -342,7 +356,7 @@ def verify_lock(file_id):
 def move_file(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     data = request.get_json() or {}
     destination_id = data.get('destination_id') or None
@@ -352,11 +366,11 @@ def move_file(file_id):
     if destination_id:
         dest = File.query.filter_by(id=destination_id, owner_id=g.current_user_id, is_folder=True).first()
         if not dest:
-            return jsonify({'error': 'Destination folder not found'}), 404
+            return jsonify({'error': 'Dossier de destination introuvable'}), 404
         if destination_id == file_id:
-            return jsonify({'error': 'Cannot move a folder into itself'}), 400
+            return jsonify({'error': 'Impossible de déplacer un dossier dans lui-même'}), 400
         if f.is_folder and _is_descendant(destination_id, file_id):
-            return jsonify({'error': 'Cannot move a folder into one of its subfolders'}), 400
+            return jsonify({'error': 'Impossible de déplacer un dossier dans l\'un de ses sous-dossiers'}), 400
 
     existing = File.query.filter(
         File.owner_id == g.current_user_id,
@@ -366,7 +380,7 @@ def move_file(file_id):
         File.is_trashed == False,
     ).first()
     if existing:
-        return jsonify({'error': 'An item with this name already exists at the destination'}), 400
+        return jsonify({'error': 'Un élément avec ce nom existe déjà à la destination'}), 400
 
     old_parent = f.parent_id
     f.parent_id = destination_id
@@ -385,7 +399,7 @@ def get_file_details(file_id):
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     # Build path
     path_parts = []
@@ -483,7 +497,7 @@ def get_file_details(file_id):
 def get_file_shares(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     shares = SharedFile.query.filter_by(file_id=file_id).all()
     return jsonify({'shares': [{
@@ -499,22 +513,22 @@ def get_file_shares(file_id):
 def share_file(file_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     permission = data.get('permission', 'viewer')
 
     if not email:
-        return jsonify({'error': 'Email is required'}), 400
+        return jsonify({'error': 'L\'adresse e-mail est requise'}), 400
     if permission not in ('viewer', 'editor'):
-        return jsonify({'error': 'Invalid permission'}), 400
+        return jsonify({'error': 'Permission invalide'}), 400
 
     target_user = User.query.filter_by(email=email).first()
     if not target_user:
-        return jsonify({'error': 'No account found with this email address'}), 404
+        return jsonify({'error': 'Aucun compte trouvé avec cette adresse e-mail'}), 404
     if target_user.id == g.current_user_id:
-        return jsonify({'error': 'You cannot share a file with yourself'}), 400
+        return jsonify({'error': 'Vous ne pouvez pas partager un fichier avec vous-même'}), 400
 
     existing = SharedFile.query.filter_by(file_id=file_id, shared_with_id=target_user.id).first()
     if existing:
@@ -545,11 +559,11 @@ def share_file(file_id):
 def unshare_file(file_id, share_id):
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     share = SharedFile.query.filter_by(id=share_id, file_id=file_id).first()
     if not share:
-        return jsonify({'error': 'Share not found'}), 404
+        return jsonify({'error': 'Partage introuvable'}), 404
 
     db.session.delete(share)
     db.session.commit()
@@ -573,7 +587,7 @@ def download_folder_zip(file_id):
 
     folder = File.query.filter_by(id=file_id, owner_id=g.current_user_id, is_folder=True).first()
     if not folder:
-        return jsonify({'error': 'Folder not found'}), 404
+        return jsonify({'error': 'Dossier introuvable'}), 404
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -681,7 +695,7 @@ def copy_file(file_id):
 
     f = File.query.filter_by(id=file_id, owner_id=g.current_user_id, is_folder=False).first()
     if not f:
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Fichier introuvable'}), 404
 
     data = request.get_json() or {}
     destination_id = data.get('destination_id') or f.parent_id

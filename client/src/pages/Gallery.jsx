@@ -1,12 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { apiFetch } from '../lib/api'
+import { apiFetch, downloadFile } from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
+import { copyImageToClipboard } from '../lib/copyImage'
 import { getMediaToken } from '../lib/mediaToken'
 import { useUpload } from '../contexts/UploadContext'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
+import { isNative } from '../lib/backendUrl'
+import { takePhoto } from '../lib/camera'
+import { shareItemNative } from '../lib/share'
 import FilePreviewModal from '../components/FilePreviewModal'
+import FileContextMenu from '../components/FileContextMenu'
 
-function PhotoCard({ photo, onClick, displayName }) {
+
+function PhotoCard({ photo, onClick, onAction, displayName }) {
   const token = getMediaToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
   const [loaded, setLoaded] = useState(false)
@@ -25,7 +32,16 @@ function PhotoCard({ photo, onClick, displayName }) {
         onLoad={() => setLoaded(true)}
         onError={e => { e.target.style.display = 'none' }}
       />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-between opacity-0 group-hover:opacity-100">
+        <div className="flex justify-end p-1" onClick={e => e.stopPropagation()}>
+          <FileContextMenu
+            isImage
+            isStarred={photo.is_starred}
+            onAction={onAction}
+            className="w-7 h-7 flex items-center justify-center rounded-md text-white hover:bg-white/20 transition-colors"
+            hideUntilHover={false}
+          />
+        </div>
         <div className="px-2 pb-2">
           <p className="text-[11px] font-medium text-white truncate">{displayName}</p>
           <p className="text-[10px] text-white/60">{photo.formatted_size}</p>
@@ -35,7 +51,7 @@ function PhotoCard({ photo, onClick, displayName }) {
   )
 }
 
-function MosaicCard({ photo, onClick, displayName }) {
+function MosaicCard({ photo, onClick, onAction, displayName }) {
   const token = getMediaToken()
   const imgUrl = `/api/files/${photo.id}/download?inline=true&token=${token}`
   const [loaded, setLoaded] = useState(false)
@@ -53,7 +69,16 @@ function MosaicCard({ photo, onClick, displayName }) {
         onLoad={() => setLoaded(true)}
         onError={e => { e.target.style.display = 'none' }}
       />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-end opacity-0 group-hover:opacity-100">
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-150 flex flex-col justify-between opacity-0 group-hover:opacity-100">
+        <div className="flex justify-end p-1" onClick={e => e.stopPropagation()}>
+          <FileContextMenu
+            isImage
+            isStarred={photo.is_starred}
+            onAction={onAction}
+            className="w-7 h-7 flex items-center justify-center rounded-md text-white hover:bg-white/20 transition-colors"
+            hideUntilHover={false}
+          />
+        </div>
         <div className="px-2 pb-2">
           <p className="text-[11px] font-medium text-white truncate">{displayName}</p>
           <p className="text-[10px] text-white/60">{photo.formatted_size}</p>
@@ -64,11 +89,11 @@ function MosaicCard({ photo, onClick, displayName }) {
 }
 
 const gridSteps = [
-  'grid-cols-5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12',
-  'grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10',
-  'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
+  'grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9',
+  'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7',
   'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6',
   'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+  'grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3',
 ]
 // index = 4 - sizeStep → slider gauche (0) = gridSteps[4] = grandes tuiles
 
@@ -80,6 +105,7 @@ export default function Gallery() {
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const { uploadFiles, queue } = useUpload()
+  const { showToast } = useToast()
   const [showExt] = useLocalPref('cloudspace_show_extensions', true)
   const activeUploadCount = queue.filter(u => u.status === 'uploading' || u.status === 'pending').length
 
@@ -105,8 +131,40 @@ export default function Gallery() {
     e.target.value = ''
   }
 
+  const handleTakePhoto = async () => {
+    try {
+      const file = await takePhoto({ source: 'camera' })
+      if (file) uploadFiles([file])
+    } catch (err) {
+      if (err?.message?.toLowerCase?.().includes('cancel')) return
+      showToast("Impossible d'accéder à l'appareil photo", 'error')
+    }
+  }
+
   const closePhoto = useCallback(() => setSelectedPhoto(null), [])
   const selectedIndex = selectedPhoto ? photos.findIndex(p => p.id === selectedPhoto.id) : -1
+
+  const makeAction = (photo) => (actionId) => {
+    switch (actionId) {
+      case 'preview': setSelectedPhoto(photo); break
+      case 'download': downloadFile(photo.id, photo.name).catch(() => {}); break
+      case 'copy_image':
+        copyImageToClipboard(photo.id)
+          .then(() => showToast('Image copiée dans le presse-papiers', 'success'))
+          .catch(() => showToast('Impossible de copier l\'image', 'error'))
+        break
+      case 'trash':
+        apiFetch(`/api/files/${photo.id}/trash`, { method: 'POST' })
+          .then(() => fetchPhotos())
+          .catch(() => {})
+        break
+      case 'share_native':
+        shareItemNative({ ...photo, is_folder: false })
+          .catch(() => showToast('Partage indisponible', 'error'))
+        break
+      default: break
+    }
+  }
 
   // Navigation prev/next dans le viewer (flèches clavier)
   useEffect(() => {
@@ -120,15 +178,15 @@ export default function Gallery() {
   }, [selectedPhoto, selectedIndex, photos])
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         {loading
           ? <div className="h-3 w-16 animate-pulse bg-slate-200 dark:bg-slate-700 rounded" />
           : <p className="text-sm text-slate-500 dark:text-slate-400">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
         }
-        <div className="flex items-center gap-2">
-          {/* Slider de taille */}
-          <div className={`flex items-center gap-1.5 transition-opacity ${mosaic ? 'opacity-30 pointer-events-none' : ''}`}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Slider de taille (masqué sur très petit écran) */}
+          <div className={`hidden sm:flex items-center gap-1.5 transition-opacity ${mosaic ? 'opacity-30 pointer-events-none' : ''}`}>
             <span className="material-symbols-outlined text-[15px] text-slate-400 leading-none select-none">apps</span>
             <input
               type="range"
@@ -154,12 +212,21 @@ export default function Gallery() {
           >
             <span className="material-symbols-outlined text-[18px] leading-none">auto_awesome_mosaic</span>
           </button>
+          {isNative() && (
+            <button
+              onClick={handleTakePhoto}
+              title="Prendre une photo"
+              className="flex items-center gap-1.5 bg-slate-100 dark:bg-surface-dark border border-slate-200 dark:border-border-dark text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-border-dark text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
+            >
+              <span className="material-symbols-outlined">photo_camera</span>
+            </button>
+          )}
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 bg-primary hover:bg-blue-600 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
           >
             <span className="material-symbols-outlined">add_photo_alternate</span>
-            Upload
+            <span className="hidden sm:inline">Upload</span>
           </button>
           <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileSelect} />
         </div>
@@ -190,13 +257,13 @@ export default function Gallery() {
       ) : mosaic ? (
         <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-2">
           {photos.map(photo => (
-            <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
+            <MosaicCard key={photo.id} photo={photo} onClick={setSelectedPhoto} onAction={makeAction(photo)} displayName={formatDisplayName(photo.name, showExt)} />
           ))}
         </div>
       ) : (
         <div className={`grid ${gridSteps[sizeStep]} gap-2`}>
           {photos.map(photo => (
-            <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} displayName={formatDisplayName(photo.name, showExt)} />
+            <PhotoCard key={photo.id} photo={photo} onClick={setSelectedPhoto} onAction={makeAction(photo)} displayName={formatDisplayName(photo.name, showExt)} />
           ))}
         </div>
       )}

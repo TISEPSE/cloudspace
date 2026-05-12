@@ -19,7 +19,7 @@ const PAGE_TITLES = {
   '/settings':  'Paramètres',
 }
 
-export default function FloatingActions() {
+export default function FloatingActions({ onMenuClick }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -101,10 +101,21 @@ export default function FloatingActions() {
   }
 
   return (
-    <div className="flex-shrink-0 h-14 flex items-center justify-between px-6 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{title}</h1>
+    <div className="flex-shrink-0 h-14 flex items-center gap-2 px-3 sm:px-6 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
+      {/* Hamburger : visible uniquement sous md */}
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          aria-label="Ouvrir le menu"
+          className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-border-dark active:bg-slate-200 dark:active:bg-border-dark/70 transition-colors flex-shrink-0"
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+      )}
 
-      <div className="flex items-center gap-2">
+      <h1 className="flex-1 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate min-w-0">{title}</h1>
+
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {sessionMinLeft !== null && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500">
             <span className="material-symbols-outlined text-[16px] leading-none">timer</span>
@@ -120,16 +131,16 @@ export default function FloatingActions() {
           <span className="material-symbols-outlined text-[20px] leading-none">search</span>
         </button>
 
-        <button className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150">
+        <button className="hidden sm:flex w-9 h-9 items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150">
           <span className="material-symbols-outlined text-[20px] leading-none">notifications</span>
         </button>
 
-        <div className="h-7 w-[1px] bg-slate-200 dark:bg-border-dark mx-0.5" />
+        <div className="hidden sm:block h-7 w-[1px] bg-slate-200 dark:bg-border-dark mx-0.5" />
 
         <div ref={menuRef}>
           <button
             onClick={handleToggle}
-            className="flex items-center gap-2.5 pl-2 pr-3.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150"
+            className="flex items-center gap-2.5 p-1 sm:pl-2 sm:pr-3.5 sm:py-2 rounded-full sm:rounded-xl hover:bg-slate-100 dark:hover:bg-surface-dark active:scale-95 transition-all duration-150"
           >
             <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
               {user?.avatar_url
@@ -137,7 +148,7 @@ export default function FloatingActions() {
                 : initials}
             </div>
             <span className="text-sm font-medium text-slate-700 dark:text-white hidden sm:block">{displayName}</span>
-            <span className={`material-symbols-outlined text-slate-400 text-lg leading-none transition-transform duration-200 ${menuOpen ? 'rotate-180' : 'rotate-0'}`}>
+            <span className={`material-symbols-outlined text-slate-400 text-lg leading-none transition-transform duration-200 hidden sm:inline ${menuOpen ? 'rotate-180' : 'rotate-0'}`}>
               expand_more
             </span>
           </button>

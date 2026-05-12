@@ -23,7 +23,7 @@ MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 def get_profile():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     return jsonify({
         'id': user.id,
@@ -45,20 +45,20 @@ def get_profile():
 def update_profile():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     data = request.get_json() or {}
 
     if 'first_name' in data:
         first_name = data['first_name'].strip()
         if not first_name:
-            return jsonify({'error': 'First name cannot be empty'}), 400
+            return jsonify({'error': 'Le prénom ne peut pas être vide'}), 400
         user.first_name = first_name
 
     if 'last_name' in data:
         last_name = data['last_name'].strip()
         if not last_name:
-            return jsonify({'error': 'Last name cannot be empty'}), 400
+            return jsonify({'error': 'Le nom de famille ne peut pas être vide'}), 400
         user.last_name = last_name
 
     if 'bio' in data:
@@ -90,22 +90,22 @@ def update_profile():
 def upload_avatar():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     if 'avatar' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+        return jsonify({'error': 'Aucun fichier fourni'}), 400
 
     file = request.files['avatar']
     if not file.filename:
-        return jsonify({'error': 'No file selected'}), 400
+        return jsonify({'error': 'Aucun fichier sélectionné'}), 400
 
     data = file.read()
     if len(data) > MAX_AVATAR_SIZE:
-        return jsonify({'error': 'File too large (max 5 MB)'}), 413
+        return jsonify({'error': 'Fichier trop volumineux (max 5 Mo)'}), 413
 
     mime = magic.from_buffer(data, mime=True)
     if mime not in ALLOWED_AVATAR_TYPES:
-        return jsonify({'error': 'Invalid file type. Only JPEG, PNG, GIF and WebP are allowed'}), 415
+        return jsonify({'error': 'Type de fichier invalide. Seuls JPEG, PNG, GIF et WebP sont autorisés'}), 415
 
     upload_folder = current_app.config.get('UPLOAD_FOLDER', '/app/uploads')
     avatars_dir = os.path.join(upload_folder, 'avatars')
@@ -152,20 +152,20 @@ def serve_avatar(filename):
 def change_password():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     data = request.get_json() or {}
     current_password = data.get('current_password', '')
     new_password = data.get('new_password', '')
 
     if not current_password or not new_password:
-        return jsonify({'error': 'current_password and new_password are required'}), 400
+        return jsonify({'error': 'Le mot de passe actuel et le nouveau mot de passe sont requis'}), 400
 
     if not check_password_hash(user.password_hash, current_password):
-        return jsonify({'error': 'Current password is incorrect'}), 401
+        return jsonify({'error': 'Mot de passe actuel incorrect'}), 401
 
     if len(new_password) < 8:
-        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        return jsonify({'error': 'Le nouveau mot de passe doit contenir au moins 8 caractères'}), 400
 
     user.password_hash = generate_password_hash(new_password)
     db.session.commit()
@@ -174,7 +174,7 @@ def change_password():
     db.session.add(log)
     db.session.commit()
 
-    return jsonify({'message': 'Password changed successfully'})
+    return jsonify({'message': 'Mot de passe modifié avec succès'})
 
 
 @profile_bp.route('/api/user/account', methods=['DELETE'])
@@ -182,14 +182,14 @@ def change_password():
 def delete_account():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     data = request.get_json() or {}
     password = data.get('password', '')
     if not password:
-        return jsonify({'error': 'Password is required'}), 400
+        return jsonify({'error': 'Mot de passe requis'}), 400
     if not check_password_hash(user.password_hash, password):
-        return jsonify({'error': 'Incorrect password'}), 401
+        return jsonify({'error': 'Mot de passe incorrect'}), 401
 
     upload_folder = current_app.config.get('UPLOAD_FOLDER', '/app/uploads')
 
@@ -234,4 +234,4 @@ def delete_account():
     db.session.commit()
 
     logger.info(f'Account deleted: {user.email}')
-    return jsonify({'message': 'Account deleted successfully'}), 200
+    return jsonify({'message': 'Compte supprimé avec succès'}), 200

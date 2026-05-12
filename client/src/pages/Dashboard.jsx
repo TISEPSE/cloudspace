@@ -304,9 +304,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-background-light dark:bg-background-dark">
-      <div className="flex items-center gap-3 mb-6">
-        <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-background-light dark:bg-background-dark">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <button className="self-start flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors">
           <span className="material-symbols-outlined">calendar_today</span>
           7 derniers jours
         </button>

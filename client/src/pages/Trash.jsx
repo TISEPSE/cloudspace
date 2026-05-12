@@ -61,12 +61,12 @@ export default function Trash() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <button
           onClick={handleEmptyTrash}
           disabled={items.length === 0 || emptyingAll}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+          className="self-start flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
         >
           <span className="material-symbols-outlined text-[16px]">delete_forever</span>
           {emptyingAll ? 'Vidage...' : 'Vider la corbeille'}
@@ -160,7 +160,7 @@ export default function Trash() {
 
                   {/* Actions */}
                   <td className="px-5 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleRestore(item.id)}
                         className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-md transition-colors"

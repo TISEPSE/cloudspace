@@ -68,7 +68,20 @@ def create_app():
         app.config['RATELIMIT_ENABLED'] = False
     limiter.init_app(app)
 
-    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+    raw_origins = os.getenv('ALLOWED_ORIGINS', '').strip()
+    if not raw_origins:
+        if app.debug or os.getenv('FLASK_ENV') == 'development':
+            allowed_origins = ['http://localhost:5173']
+        else:
+            raise RuntimeError('ALLOWED_ORIGINS must be set in production (and not empty)')
+    else:
+        allowed_origins = [o.strip() for o in raw_origins.split(',') if o.strip()]
+    if '*' in allowed_origins:
+        raise RuntimeError('ALLOWED_ORIGINS cannot contain "*" — list explicit origins')
+    # Always allow native Capacitor origins (used by the Android APK)
+    for native_origin in ('capacitor://localhost', 'http://localhost', 'https://localhost'):
+        if native_origin not in allowed_origins:
+            allowed_origins.append(native_origin)
     cors.init_app(app, resources={r"/api/*": {"origins": allowed_origins}})
 
     # Security headers
@@ -79,9 +92,12 @@ def create_app():
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        # style-src-elem bloque l'injection de <style>/<link> ; style-src-attr autorise les styles inline React
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "style-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "style-src-elem 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "style-src-attr 'unsafe-inline'; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: blob: https://i.pravatar.cc; "
             "script-src 'self' https://challenges.cloudflare.com; "

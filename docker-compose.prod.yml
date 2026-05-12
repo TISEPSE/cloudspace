@@ -18,6 +18,22 @@ services:
       timeout: 5s
       retries: 5
 
+  clamav:
+    image: clamav/clamav:latest
+    container_name: CloudSpace-ClamAV
+    expose:
+      - "3310"
+    volumes:
+      - clamav_db:/var/lib/clamav
+    networks:
+      - my-net
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
   api:
     image: ${DOCKERHUB_USERNAME:-tisepse}/cloudspace-api:latest
     container_name: Backend-Flask
@@ -30,11 +46,16 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      CLAMAV_ENABLED: ${CLAMAV_ENABLED:-true}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
       FLASK_APP: app.py
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     networks:
       - my-net
@@ -53,6 +74,8 @@ volumes:
   pgdata:
     driver: local
   uploads_data:
+    driver: local
+  clamav_db:
     driver: local
 
 networks:

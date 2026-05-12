@@ -80,13 +80,13 @@ def register():
         return jsonify({'error': 'Vérification anti-bot échouée. Veuillez réessayer.'}), 400
 
     if not all([first_name, last_name, email, password]):
-        return jsonify({'error': 'All fields are required'}), 400
+        return jsonify({'error': 'Tous les champs sont requis'}), 400
 
     if len(password) < 8:
-        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        return jsonify({'error': 'Le mot de passe doit contenir au moins 8 caractères'}), 400
 
     if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email already registered'}), 409
+        return jsonify({'error': 'Adresse e-mail déjà enregistrée'}), 409
 
     smtp_enabled = bool(SMTP_HOST)
 
@@ -120,7 +120,7 @@ def register():
 
     if smtp_enabled:
         return jsonify({
-            'message': 'Account created. Please check your email to verify your account.',
+            'message': 'Compte créé. Veuillez vérifier votre e-mail pour activer votre compte.',
             'email_verification_required': True,
         }), 201
 
@@ -144,18 +144,18 @@ def register():
 def verify_email():
     token = request.args.get('token', '').strip()
     if not token:
-        return jsonify({'error': 'Token is required'}), 400
+        return jsonify({'error': 'Token requis'}), 400
 
     ev = EmailVerificationToken.query.filter_by(token=token, used=False).first()
     if not ev:
-        return jsonify({'error': 'Invalid or already used token'}), 400
+        return jsonify({'error': 'Token invalide ou déjà utilisé'}), 400
 
     now = datetime.now(timezone.utc)
     expires = ev.expires_at
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     if now > expires:
-        return jsonify({'error': 'Token has expired'}), 400
+        return jsonify({'error': 'Token expiré'}), 400
 
     ev.used = True
     user = db.session.get(User, ev.user_id)
@@ -166,7 +166,7 @@ def verify_email():
     refresh_token, _ = generate_refresh_token(user.id)
 
     return jsonify({
-        'message': 'Email verified successfully.',
+        'message': 'Adresse e-mail vérifiée avec succès.',
         'access_token': access_token,
         'refresh_token': refresh_token,
         'user': {
@@ -183,17 +183,17 @@ def verify_email():
 @limiter.limit("3 per minute")
 def resend_verification():
     if not SMTP_HOST:
-        return jsonify({'error': 'Email verification is not enabled on this server'}), 400
+        return jsonify({'error': 'La vérification par e-mail n\'est pas activée sur ce serveur'}), 400
 
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     if not email:
-        return jsonify({'error': 'Email is required'}), 400
+        return jsonify({'error': 'L\'adresse e-mail est requise'}), 400
 
     user = User.query.filter_by(email=email).first()
     # Always return 200 to avoid email enumeration
     if not user or user.is_verified:
-        return jsonify({'message': 'If your account exists and is unverified, a new email was sent.'}), 200
+        return jsonify({'message': 'Si votre compte existe et n\'est pas vérifié, un nouvel e-mail a été envoyé.'}), 200
 
     raw_token = secrets.token_urlsafe(48)
     ev = EmailVerificationToken(
@@ -205,7 +205,7 @@ def resend_verification():
     db.session.commit()
     _send_verification_email(email, raw_token)
 
-    return jsonify({'message': 'If your account exists and is unverified, a new email was sent.'}), 200
+    return jsonify({'message': 'Si votre compte existe et n\'est pas vérifié, un nouvel e-mail a été envoyé.'}), 200
 
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
@@ -256,15 +256,15 @@ def refresh():
     device_id = data.get('device_id', '')
 
     if not refresh_token:
-        return jsonify({'error': 'Refresh token is required'}), 400
+        return jsonify({'error': 'Refresh token requis'}), 400
 
     payload = decode_token(refresh_token)
     if not payload or payload.get('type') != 'refresh':
-        return jsonify({'error': 'Invalid or expired refresh token'}), 401
+        return jsonify({'error': 'Refresh token invalide ou expiré'}), 401
 
     jti = payload.get('jti')
     if TokenBlocklist.query.filter_by(jti=jti).first():
-        return jsonify({'error': 'Token has been revoked'}), 401
+        return jsonify({'error': 'Token révoqué'}), 401
 
     # Validate device binding
     token_device_id = payload.get('did', '')
@@ -273,7 +273,7 @@ def refresh():
 
     user = db.session.get(User, payload['sub'])
     if not user:
-        return jsonify({'error': 'User not found'}), 401
+        return jsonify({'error': 'Utilisateur introuvable'}), 401
 
     # Rotate: invalider l'ancien token
     db.session.add(TokenBlocklist(jti=jti))
@@ -300,7 +300,7 @@ def logout():
             db.session.add(blocked)
             db.session.commit()
 
-    return jsonify({'message': 'Logged out successfully'})
+    return jsonify({'message': 'Déconnexion réussie'})
 
 
 @auth_bp.route('/api/auth/media-token', methods=['GET'])

@@ -5,21 +5,24 @@ import { AuthProvider } from './contexts/AuthContext'
 import { UploadProvider } from './contexts/UploadContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
+import BackendGate from './components/BackendGate'
 import './index.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <UploadProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </UploadProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BackendGate>
+        <BrowserRouter>
+          <AuthProvider>
+            <UploadProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </UploadProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </BackendGate>
+    </ThemeProvider>
   </StrictMode>,
 )

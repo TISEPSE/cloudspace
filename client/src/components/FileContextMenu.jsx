@@ -1,5 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
+import { Capacitor } from '@capacitor/core'
+
+const IS_NATIVE = Capacitor.isNativePlatform()
 
 function useDropdownPosition(anchorRect, menuRef) {
   const [position, setPosition] = useState({ top: 0, left: 0 })
@@ -22,15 +25,17 @@ function useDropdownPosition(anchorRect, menuRef) {
     const spaceAbove = anchorRect.top - 12
     const openAbove = menuRect.height > spaceBelow && spaceAbove > spaceBelow
 
-    let top
+    let top, maxHeight
     if (openAbove) {
-      top = anchorRect.top - menuRect.height - 4
+      maxHeight = Math.min(menuRect.height, spaceAbove)
+      top = anchorRect.top - maxHeight - 4
       if (top < 12) top = 12
     } else {
+      maxHeight = Math.min(menuRect.height, spaceBelow)
       top = anchorRect.bottom + 4
     }
 
-    setPosition({ top, left, openAbove })
+    setPosition({ top, left, openAbove, maxHeight })
   }, [anchorRect, menuRef])
 
   return position
@@ -55,7 +60,7 @@ function useClickOutside(ref, onClose) {
   }, [ref, onClose])
 }
 
-function getActions(isFolder, isLocked, isStarred) {
+function getActions(isFolder, isLocked, isStarred, isImage) {
   return [
     isFolder
       ? { id: 'open', label: 'Ouvrir', icon: 'folder_open' }
@@ -66,14 +71,105 @@ function getActions(isFolder, isLocked, isStarred) {
     { type: 'divider' },
     ...(isFolder ? [{ id: 'lock', label: isLocked ? 'Déverrouiller' : 'Verrouiller', icon: isLocked ? 'lock_open' : 'lock' }] : []),
     { id: 'move', label: 'Déplacer vers', icon: 'drive_file_move' },
-    { id: 'share', label: 'Partager', icon: 'share' },
+    { id: 'share', label: 'Partager (CloudSpace)', icon: 'share' },
+    ...(IS_NATIVE ? [{ id: 'share_native', label: 'Partager via…', icon: 'ios_share' }] : []),
+    ...(isImage ? [{ id: 'copy_image', label: 'Copier l\'image', icon: 'content_copy' }] : []),
     { id: 'download', label: isFolder ? 'Télécharger en ZIP' : 'Télécharger', icon: isFolder ? 'folder_zip' : 'download', ...(!isFolder ? { shortcut: 'Ctrl+D' } : {}) },
     { type: 'divider' },
     { id: 'trash', label: 'Supprimer', icon: 'delete', danger: true, shortcut: 'Suppr' },
   ]
 }
 
-function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isStarred }) {
+function BottomSheetMenu({ onClose, onAction, isFolder, isLocked, isStarred, isImage }) {
+  const sheetRef = useRef(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  const handleCloseStable = useCallback(() => {
+    setVisible(false)
+    setTimeout(onClose, 200)
+  }, [onClose])
+
+  useEffect(() => {
+    function handleKeyDown(e) { if (e.key === 'Escape') handleCloseStable() }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleCloseStable])
+
+  function handleAction(actionId, e) {
+    e.stopPropagation()
+    onAction?.(actionId)
+    handleCloseStable()
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-end"
+      onClick={handleCloseStable}
+    >
+      <div
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      />
+      <div
+        ref={sheetRef}
+        onClick={e => e.stopPropagation()}
+        className={`
+          relative w-full bg-white dark:bg-[#1e2a36]
+          rounded-t-2xl border-t border-slate-200 dark:border-[#2d3b47]
+          shadow-2xl pb-[env(safe-area-inset-bottom)] max-h-[80vh] overflow-y-auto
+          transition-transform duration-200 ease-out
+          ${visible ? 'translate-y-0' : 'translate-y-full'}
+        `}
+      >
+        <div className="flex justify-center pt-2.5 pb-1">
+          <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+        </div>
+        <div className="py-1.5">
+          {getActions(isFolder, isLocked, isStarred, isImage).map((action, index) => {
+            if (action.type === 'divider') {
+              return (
+                <div
+                  key={`div-${index}`}
+                  className="my-1 mx-3 h-px bg-slate-100 dark:bg-[#2d3b47]"
+                />
+              )
+            }
+            return (
+              <button
+                key={action.id}
+                onClick={(e) => handleAction(action.id, e)}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 text-left
+                  active:bg-slate-100 dark:active:bg-white/10 transition-colors
+                  ${action.danger
+                    ? 'text-red-500 dark:text-red-400'
+                    : 'text-slate-700 dark:text-slate-200'
+                  }
+                `}
+              >
+                <span
+                  className={`
+                    material-symbols-outlined text-[20px] flex-shrink-0
+                    ${action.danger ? 'text-red-400' : 'text-slate-400'}
+                  `}
+                >
+                  {action.icon}
+                </span>
+                <span className="flex-1 text-sm font-medium">{action.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isStarred, isImage }) {
   const menuRef = useRef(null)
   const [visible, setVisible] = useState(false)
   const position = useDropdownPosition(anchorRect, menuRef)
@@ -105,7 +201,7 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isSta
     >
       <div
         className={`
-          w-56 rounded-xl py-1.5
+          w-56 rounded-xl py-1.5 overflow-y-auto
           bg-white dark:bg-[#1e2a36]
           border border-slate-200 dark:border-[#2d3b47]
           shadow-xl shadow-black/15 dark:shadow-black/40
@@ -116,8 +212,9 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isSta
             : `opacity-0 scale-95 ${position.openAbove ? 'translate-y-1' : '-translate-y-1'}`
           }
         `}
+        style={position.maxHeight ? { maxHeight: position.maxHeight } : {}}
       >
-        {getActions(isFolder, isLocked, isStarred).map((action, index) => {
+        {getActions(isFolder, isLocked, isStarred, isImage).map((action, index) => {
           if (action.type === 'divider') {
             return (
               <div
@@ -166,23 +263,49 @@ function MenuDropdown({ anchorRect, onClose, onAction, isFolder, isLocked, isSta
   )
 }
 
-export default function FileContextMenu({ children, className, onAction, isFolder, isLocked, isStarred = false, hideUntilHover = true, forceVisible = false }) {
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
+const FileContextMenu = forwardRef(function FileContextMenu({ children, className, onAction, isFolder, isLocked, isStarred = false, isImage = false, hideUntilHover = true, forceVisible = false }, ref) {
   const [open, setOpen] = useState(false)
   const [anchorRect, setAnchorRect] = useState(null)
   const btnRef = useRef(null)
+  const isMobile = useIsMobile()
 
   const handleToggle = useCallback((e) => {
-    e.stopPropagation()
+    e?.stopPropagation?.()
     if (open) {
       setOpen(false)
     } else {
-      const rect = btnRef.current.getBoundingClientRect()
+      const rect = btnRef.current?.getBoundingClientRect()
       setAnchorRect(rect)
       setOpen(true)
     }
   }, [open])
 
-  const opacityClass = forceVisible ? 'opacity-100' : hideUntilHover ? 'opacity-0 group-hover:opacity-100' : ''
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      if (!open) {
+        const rect = btnRef.current?.getBoundingClientRect()
+        setAnchorRect(rect)
+        setOpen(true)
+      }
+    },
+    close: () => setOpen(false),
+  }), [open])
+
+  // Sur mobile : pas de hover, le menu est toujours visible
+  const opacityClass = forceVisible || isMobile
+    ? 'opacity-100'
+    : hideUntilHover ? 'opacity-0 group-hover:opacity-100' : ''
   const defaultClass = [
     'w-7 h-7 flex items-center justify-center rounded-md flex-shrink-0',
     'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200',
@@ -203,15 +326,29 @@ export default function FileContextMenu({ children, className, onAction, isFolde
       </button>
 
       {open && (
-        <MenuDropdown
-          anchorRect={anchorRect}
-          onClose={() => setOpen(false)}
-          onAction={onAction}
-          isFolder={isFolder}
-          isLocked={isLocked}
-          isStarred={isStarred}
-        />
+        isMobile ? (
+          <BottomSheetMenu
+            onClose={() => setOpen(false)}
+            onAction={onAction}
+            isFolder={isFolder}
+            isLocked={isLocked}
+            isStarred={isStarred}
+            isImage={isImage}
+          />
+        ) : (
+          <MenuDropdown
+            anchorRect={anchorRect}
+            onClose={() => setOpen(false)}
+            onAction={onAction}
+            isFolder={isFolder}
+            isLocked={isLocked}
+            isStarred={isStarred}
+            isImage={isImage}
+          />
+        )
       )}
     </>
   )
-}
+})
+
+export default FileContextMenu

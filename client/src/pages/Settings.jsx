@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { useLocalPref } from "../hooks/useLocalPref";
+import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend } from "../lib/backendUrl";
 
 /* ─── Données ─── */
 
@@ -67,7 +68,7 @@ function SectionTitle({ title, desc }) {
 
 function Card({ children, className = "" }) {
   return (
-    <div className={`bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl p-6 ${className}`}>
+    <div className={`bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl p-4 sm:p-6 ${className}`}>
       {children}
     </div>
   );
@@ -278,19 +279,19 @@ function ProfilSection() {
 
       {/* Suppression */}
       <Card className="border-red-200 dark:border-red-500/20">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-red-500">person_remove</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900 dark:text-white">Supprimer le compte</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Action irréversible — toutes vos données seront perdues.</p>
             </div>
           </div>
           <button
             onClick={() => setDeleteStep(1)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+            className="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
           >
             <span className="material-symbols-outlined">delete_forever</span>
             Supprimer
@@ -463,12 +464,12 @@ function SecuriteSection() {
       </Card>
 
       <Card className="border-orange-200 dark:border-orange-500/20">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-orange-400">devices_off</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900 dark:text-white">Se déconnecter de tous les appareils</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Invalide toutes les sessions actives, y compris celle-ci.</p>
             </div>
@@ -476,7 +477,7 @@ function SecuriteSection() {
           <button
             onClick={handleLogoutEverywhere}
             disabled={loggingOutAll}
-            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
             {loggingOutAll ? 'Déconnexion…' : 'Déconnecter'}
@@ -788,14 +789,19 @@ function StockageSection() {
 
 export default function Settings() {
   const [active, setActive] = useState("profil");
+  const allSections = useMemo(() => {
+    return isNative()
+      ? [...sections, { id: 'application', label: 'Application', icon: 'smartphone' }]
+      : sections;
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-background-dark">
 
       {/* Onglets horizontaux */}
-      <div className="flex-shrink-0 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark px-6">
+      <div className="flex-shrink-0 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark px-3 sm:px-6">
         <nav className="flex items-center gap-0 -mb-px overflow-x-auto">
-          {sections.map(s => (
+          {allSections.map(s => (
             <button
               key={s.id}
               onClick={() => setActive(s.id)}
@@ -816,13 +822,129 @@ export default function Settings() {
 
       {/* Contenu */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-8 py-8">
-          {active === 'profil'    && <ProfilSection />}
-          {active === 'securite'  && <SecuriteSection />}
-          {active === 'apparence' && <ApparenceSection />}
-          {active === 'stockage'  && <StockageSection />}
+        <div className="max-w-2xl mx-auto px-3 sm:px-8 py-6 sm:py-8">
+          {active === 'profil'      && <ProfilSection />}
+          {active === 'securite'    && <SecuriteSection />}
+          {active === 'apparence'   && <ApparenceSection />}
+          {active === 'stockage'    && <StockageSection />}
+          {active === 'application' && <ApplicationSection />}
         </div>
       </main>
+    </div>
+  );
+}
+
+function ApplicationSection() {
+  const [url, setUrl] = useState(() => getBackendUrl() || '');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [msgType, setMsgType] = useState('info');
+
+  const currentUrl = getBackendUrl();
+  const inputClass = "w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors";
+
+  const handleSave = async () => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    if (!trimmed) {
+      setMsgType('error');
+      setMsg('Veuillez saisir une URL.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(trimmed)) {
+      setMsgType('error');
+      setMsg("L'URL doit commencer par http:// ou https://");
+      return;
+    }
+    setSaving(true);
+    setMsg('Test de connexion…');
+    setMsgType('info');
+    try {
+      const result = await pingBackend(trimmed);
+      if (!result.ok) {
+        setMsgType('error');
+        setMsg(`Le serveur ne répond pas (${result.error}).`);
+        setSaving(false);
+        return;
+      }
+      setBackendUrl(trimmed);
+      setMsgType('success');
+      setMsg('Serveur enregistré. Rechargement…');
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      setMsgType('error');
+      setMsg('Erreur réseau. Vérifiez votre connexion.');
+      setSaving(false);
+    }
+  };
+
+  const handleClear = () => {
+    if (!confirm('Vous serez déconnecté et devrez reconfigurer une URL serveur. Continuer ?')) return;
+    clearBackendUrl();
+    try { localStorage.removeItem('cloudspace_token'); } catch {}
+    window.location.reload();
+  };
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <SectionTitle title="Serveur CloudSpace" desc="Adresse du serveur auquel cette application se connecte." />
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">URL du serveur</label>
+          <input
+            type="url"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://cloudspace.example.com"
+            autoCapitalize="off"
+            autoCorrect="off"
+            className={inputClass}
+          />
+          {currentUrl && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+              Connecté à <span className="font-mono text-slate-700 dark:text-slate-300">{currentUrl}</span>
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 mt-4">
+          {msg ? (
+            <span className={`text-xs font-medium ${
+              msgType === 'success' ? 'text-emerald-500' :
+              msgType === 'error'   ? 'text-red-500' :
+              'text-slate-500 dark:text-slate-400'
+            }`}>{msg}</span>
+          ) : <span />}
+          <button
+            onClick={handleSave}
+            disabled={saving || !url.trim() || url.trim() === currentUrl}
+            className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            {saving ? 'Test…' : 'Tester et enregistrer'}
+          </button>
+        </div>
+      </Card>
+
+      <Card className="border-red-200 dark:border-red-500/20">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-red-400">link_off</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Réinitialiser le serveur</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Oublie l'URL et déconnecte la session.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleClear}
+            className="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/5 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+            Réinitialiser
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }

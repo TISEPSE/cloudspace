@@ -64,11 +64,11 @@ def media_or_login_required(f):
             token = query_token
 
         if not token:
-            return jsonify({'error': 'Missing authorization'}), 401
+            return jsonify({'error': 'Autorisation manquante'}), 401
 
         payload = decode_token(token)
         if not payload:
-            return jsonify({'error': 'Invalid or expired token'}), 401
+            return jsonify({'error': 'Token invalide ou expiré'}), 401
 
         token_type = payload.get('type')
         if token_type == 'access':
@@ -76,11 +76,11 @@ def media_or_login_required(f):
         elif token_type == 'media' and token == query_token:
             pass  # media token uniquement via query param
         else:
-            return jsonify({'error': 'Invalid token type'}), 401
+            return jsonify({'error': 'Type de token invalide'}), 401
 
         user = db.session.get(User, payload['sub'])
         if not user:
-            return jsonify({'error': 'User not found'}), 401
+            return jsonify({'error': 'Utilisateur introuvable'}), 401
 
         g.current_user_id = user.id
         g.current_user = user
@@ -102,18 +102,18 @@ def login_required(f):
             token = request.args.get('token')
 
         if not token:
-            return jsonify({'error': 'Missing authorization'}), 401
+            return jsonify({'error': 'Autorisation manquante'}), 401
 
         payload = decode_token(token)
         if not payload:
-            return jsonify({'error': 'Invalid or expired token'}), 401
+            return jsonify({'error': 'Token invalide ou expiré'}), 401
 
         if payload.get('type') != 'access':
-            return jsonify({'error': 'Invalid token type'}), 401
+            return jsonify({'error': 'Type de token invalide'}), 401
 
         user = db.session.get(User, payload['sub'])
         if not user:
-            return jsonify({'error': 'User not found'}), 401
+            return jsonify({'error': 'Utilisateur introuvable'}), 401
 
         g.current_user_id = user.id
         g.current_user = user

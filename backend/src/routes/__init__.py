@@ -10,6 +10,7 @@ from src.routes.sharing import sharing_bp
 from src.routes.search import search_bp
 from src.routes.profile import profile_bp
 from src.routes.password_reset import password_reset_bp
+from src.routes.health import health_bp
 
 
 def register_blueprints(app):
@@ -25,3 +26,4 @@ def register_blueprints(app):
     app.register_blueprint(search_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(password_reset_bp)
+    app.register_blueprint(health_bp)

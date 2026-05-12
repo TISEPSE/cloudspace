@@ -4,29 +4,29 @@ import { apiFetch } from '../lib/api'
 function getMimeTypeLabel(mime) {
   if (!mime) return '—'
   const map = {
-    'image/jpeg': 'JPEG Image', 'image/png': 'PNG Image', 'image/gif': 'GIF Image',
-    'image/webp': 'WebP Image', 'image/bmp': 'BMP Image', 'image/svg+xml': 'SVG Image',
-    'video/mp4': 'MP4 Video', 'video/quicktime': 'QuickTime Video', 'video/x-msvideo': 'AVI Video',
-    'video/x-matroska': 'MKV Video', 'video/webm': 'WebM Video',
-    'audio/mpeg': 'MP3 Audio', 'audio/wav': 'WAV Audio', 'audio/ogg': 'OGG Audio',
-    'audio/flac': 'FLAC Audio', 'audio/aac': 'AAC Audio',
-    'application/pdf': 'PDF Document', 'application/json': 'JSON File',
-    'application/zip': 'ZIP Archive', 'application/x-rar-compressed': 'RAR Archive',
-    'application/x-7z-compressed': '7-Zip Archive',
-    'text/plain': 'Text File', 'text/csv': 'CSV Spreadsheet', 'text/markdown': 'Markdown Document',
-    'application/msword': 'Word Document',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word Document',
-    'application/vnd.ms-excel': 'Excel Spreadsheet',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel Spreadsheet',
-    'application/vnd.ms-powerpoint': 'PowerPoint Presentation',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint Presentation',
+    'image/jpeg': 'Image JPEG', 'image/png': 'Image PNG', 'image/gif': 'Image GIF',
+    'image/webp': 'Image WebP', 'image/bmp': 'Image BMP', 'image/svg+xml': 'Image SVG',
+    'video/mp4': 'Vidéo MP4', 'video/quicktime': 'Vidéo QuickTime', 'video/x-msvideo': 'Vidéo AVI',
+    'video/x-matroska': 'Vidéo MKV', 'video/webm': 'Vidéo WebM',
+    'audio/mpeg': 'Audio MP3', 'audio/wav': 'Audio WAV', 'audio/ogg': 'Audio OGG',
+    'audio/flac': 'Audio FLAC', 'audio/aac': 'Audio AAC',
+    'application/pdf': 'Document PDF', 'application/json': 'Fichier JSON',
+    'application/zip': 'Archive ZIP', 'application/x-rar-compressed': 'Archive RAR',
+    'application/x-7z-compressed': 'Archive 7-Zip',
+    'text/plain': 'Fichier texte', 'text/csv': 'Tableur CSV', 'text/markdown': 'Document Markdown',
+    'application/msword': 'Document Word',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Document Word',
+    'application/vnd.ms-excel': 'Tableur Excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Tableur Excel',
+    'application/vnd.ms-powerpoint': 'Présentation PowerPoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'Présentation PowerPoint',
   }
   if (map[mime]) return map[mime]
   const [type, sub] = mime.split('/')
-  if (type === 'image') return `${sub.toUpperCase()} Image`
-  if (type === 'video') return `${sub.toUpperCase()} Video`
-  if (type === 'audio') return `${sub.toUpperCase()} Audio`
-  if (type === 'text') return `${sub} Text`
+  if (type === 'image') return `Image ${sub.toUpperCase()}`
+  if (type === 'video') return `Vidéo ${sub.toUpperCase()}`
+  if (type === 'audio') return `Audio ${sub.toUpperCase()}`
+  if (type === 'text') return `Texte ${sub}`
   return mime
 }
 
@@ -48,17 +48,17 @@ export default function ItemDetailsModal({ itemId, onClose }) {
   if (!itemId) return null
 
   const fmt = (iso) => iso
-    ? new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(iso).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-border-dark shadow-2xl w-full sm:max-w-lg sm:mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-border-dark flex-shrink-0">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white">File information</h3>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">Informations du fichier</h3>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark transition-colors">
             <span className="material-symbols-outlined text-[20px] text-slate-400 leading-none">close</span>
           </button>
@@ -91,7 +91,7 @@ export default function ItemDetailsModal({ itemId, onClose }) {
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900 dark:text-white truncate">{data.name}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{data.is_folder ? `${data.items_count} items` : data.formatted_size}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{data.is_folder ? `${data.items_count} élément${data.items_count !== 1 ? 's' : ''}` : data.formatted_size}</p>
                 </div>
               </div>
 
@@ -147,14 +147,14 @@ export default function ItemDetailsModal({ itemId, onClose }) {
               <div className="px-6 pb-4">
                 <button onClick={() => setShowAdvanced(v => !v)} className="flex items-center gap-1 text-sm font-semibold text-primary py-2 hover:opacity-80 transition-opacity">
                   <span className="material-symbols-outlined">{showAdvanced ? 'expand_less' : 'expand_more'}</span>
-                  Advanced details
+                  Détails avancés
                 </button>
                 {showAdvanced && (
                   <div>
                     {[
-                      !data.is_folder && { label: 'Size (bytes)', value: data.size?.toLocaleString() },
+                      !data.is_folder && { label: 'Taille (octets)', value: data.size?.toLocaleString('fr-FR') },
                       data.sha1 && { label: 'SHA1', value: data.sha1 },
-                      { label: 'File ID', value: data.id },
+                      { label: 'ID fichier', value: data.id },
                     ].filter(Boolean).map(({ label, value }) => (
                       <div key={label} className="flex items-start py-2.5 gap-4 border-b border-slate-100 dark:border-border-dark last:border-0">
                         <span className="w-24 text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0 pt-px">{label}</span>
@@ -166,7 +166,7 @@ export default function ItemDetailsModal({ itemId, onClose }) {
               </div>
             </>
           ) : (
-            <p className="py-16 text-center text-slate-400 text-sm">Failed to load file information.</p>
+            <p className="py-16 text-center text-slate-400 text-sm">Impossible de charger les informations du fichier.</p>
           )}
         </div>
 

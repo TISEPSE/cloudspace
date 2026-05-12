@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
 
 const breadcrumbs = [
-  { label: 'Home', to: '/' },
-  { label: 'Projects', to: '/drive' },
-  { label: 'Q4 Marketing', to: null },
+  { label: 'Accueil', to: '/' },
+  { label: 'Projets', to: '/drive' },
+  { label: 'Marketing Q4', to: null },
 ]
 
 const tableFiles = [
@@ -18,9 +18,9 @@ const tableFiles = [
     iconBg: null,
     owners: [
       { initials: 'SM', color: 'bg-pink-500' },
-      { badge: 'You' },
+      { badge: 'Moi' },
     ],
-    modified: 'Oct 24, 2023',
+    modified: '24 oct. 2023',
     size: '-',
     selected: false,
   },
@@ -35,8 +35,8 @@ const tableFiles = [
       { initials: 'SM', color: 'bg-pink-500' },
       { initials: 'JD', color: 'bg-blue-500' },
     ],
-    modified: '2 min ago',
-    size: '14 MB',
+    modified: 'il y a 2 min',
+    size: '14 Mo',
     selected: true,
   },
   {
@@ -46,9 +46,9 @@ const tableFiles = [
     icon: 'picture_as_pdf',
     iconColor: 'text-red-500',
     iconBg: 'bg-red-50 dark:bg-red-500/10',
-    owners: [{ badge: 'You' }],
-    modified: 'Yesterday',
-    size: '2.4 MB',
+    owners: [{ badge: 'Moi' }],
+    modified: 'Hier',
+    size: '2,4 Mo',
     selected: false,
   },
   {
@@ -59,8 +59,8 @@ const tableFiles = [
     iconColor: 'text-green-500',
     iconBg: 'bg-green-50 dark:bg-green-500/10',
     owners: [{ initials: 'MR', color: 'bg-teal-500' }],
-    modified: 'Oct 20, 2023',
-    size: '850 KB',
+    modified: '20 oct. 2023',
+    size: '850 Ko',
     selected: false,
   },
 ]
@@ -71,26 +71,26 @@ const activityItems = [
     user: 'Sarah M.',
     initials: 'SM',
     color: 'bg-pink-500',
-    time: '10m ago',
-    action: 'Uploaded a new version',
-    quote: 'v2.1 - Adjusted the spacing on the navbar.',
+    time: 'il y a 10 min',
+    action: 'A téléversé une nouvelle version',
+    quote: 'v2.1 - Ajustement des espacements de la barre de navigation.',
   },
   {
     id: 2,
     user: 'John D.',
     initials: 'JD',
     color: 'bg-blue-500',
-    time: '5m ago',
-    action: 'Commented on file',
-    quote: 'Can we make the blue pop more? It feels a bit washed out on dark mode screens.',
+    time: 'il y a 5 min',
+    action: 'A commenté le fichier',
+    quote: 'Le bleu pourrait-il être plus prononcé ? Il paraît un peu terne sur les écrans en mode sombre.',
   },
   {
     id: 3,
-    user: 'System',
+    user: 'Système',
     initials: 'S',
     color: 'bg-indigo-500',
-    time: '2h ago',
-    action: 'File created',
+    time: 'il y a 2 h',
+    action: 'Fichier créé',
     quote: null,
     isSystem: true,
   },
@@ -137,7 +137,7 @@ export default function FileExplorerDetail() {
           </div>
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-border-dark hover:bg-slate-50 dark:hover:bg-[#1f2d3d] transition-colors">
             <span className="material-symbols-outlined">filter_list</span>
-            Filter
+            Filtrer
           </button>
         </div>
       </div>
@@ -149,10 +149,10 @@ export default function FileExplorerDetail() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-[#151e26] sticky top-0 z-10">
-                <th className="w-[40%] text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
-                <th className="w-[20%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Owner</th>
-                <th className="w-[20%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last Modified</th>
-                <th className="w-[10%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Size</th>
+                <th className="w-[40%] text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nom</th>
+                <th className="w-[20%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Propriétaire</th>
+                <th className="w-[20%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modifié le</th>
+                <th className="w-[10%] text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Taille</th>
                 <th className="w-[10%] text-right px-6 py-3"></th>
               </tr>
             </thead>
@@ -223,7 +223,7 @@ export default function FileExplorerDetail() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Logo_V2.fig</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Figma Design File</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fichier Design Figma</p>
               </div>
               <button className="p-1 text-primary hover:bg-primary/10 rounded transition-colors">
                 <span className="material-symbols-outlined text-lg">edit</span>
@@ -234,10 +234,10 @@ export default function FileExplorerDetail() {
           {/* Tabs */}
           <div className="flex border-b border-slate-200 dark:border-border-dark px-4">
             <button className="px-4 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
-              Details
+              Détails
             </button>
             <button className="px-4 py-2.5 text-sm font-medium text-primary border-b-2 border-primary bg-slate-50/50 dark:bg-surface-dark/50">
-              Activity
+              Activité
             </button>
           </div>
 
@@ -279,7 +279,7 @@ export default function FileExplorerDetail() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Write a comment..."
+                placeholder="Écrire un commentaire..."
                 className="flex-1 bg-slate-100 dark:bg-surface-dark border-none rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:ring-2 focus:ring-primary"
               />
               <button className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">

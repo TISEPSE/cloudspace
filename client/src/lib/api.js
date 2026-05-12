@@ -1,3 +1,5 @@
+import { apiUrl } from './backendUrl'
+
 const ACCESS_TOKEN_KEY = 'cloudspace_access_token'
 const REFRESH_TOKEN_KEY = 'cloudspace_refresh_token'
 const SESSION_USER_KEY = 'cloudspace_session_user'
@@ -41,7 +43,7 @@ export function apiFetch(url, options = {}) {
   if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
   }
-  return fetch(url, { ...options, headers })
+  return fetch(apiUrl(url), { ...options, headers })
 }
 
 export async function downloadFile(fileId, filename, isFolder = false) {

@@ -14,7 +14,7 @@ const navItems = [
 ]
 
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onMobileClose }) {
   const location = useLocation()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
@@ -24,6 +24,7 @@ export default function Sidebar() {
   const [sidebarPos] = useLocalPref('cloudspace_sidebar_position', 'left')
   const [isHovered, setIsHovered] = useState(false)
 
+  // Sur mobile, jamais collapsed. Le mode collapsed n'existe qu'au-dessus de md.
   const collapsed = hoverExpand && !isHovered
 
   useEffect(() => {
@@ -42,17 +43,35 @@ export default function Sidebar() {
 
   const isDriveActive = location.pathname === '/drive' || location.pathname.startsWith('/drive/')
 
+  // Ferme automatiquement le drawer mobile lors d'un changement de route
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) onMobileClose()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+
   return (
     <>
+      {/* Backdrop mobile */}
+      <div
+        onClick={onMobileClose}
+        className={`md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      />
       <aside
         onMouseEnter={() => hoverExpand && setIsHovered(true)}
         onMouseLeave={() => hoverExpand && setIsHovered(false)}
         className={[
-          `bg-white dark:bg-background-dark ${sidebarPos === 'right' ? 'border-l' : 'border-r'} border-slate-200 dark:border-border-dark`,
+          `bg-white dark:bg-background-dark ${sidebarPos === 'right' ? 'border-l md:border-l' : 'border-r md:border-r'} border-slate-200 dark:border-border-dark`,
           'flex flex-col overflow-hidden flex-shrink-0',
-          'transition-[width] duration-200 ease-in-out z-20',
-          collapsed ? 'w-[56px]' : 'w-60',
-          hoverExpand && isHovered ? 'shadow-xl shadow-black/10 dark:shadow-black/30' : '',
+          // Mobile : drawer fixe en overlay
+          `fixed md:relative inset-y-0 ${sidebarPos === 'right' ? 'right-0' : 'left-0'} z-50`,
+          'w-60 md:w-auto',
+          `transition-transform md:transition-[width] duration-200 ease-in-out`,
+          // Slide in/out sur mobile
+          mobileOpen ? 'translate-x-0' : (sidebarPos === 'right' ? 'translate-x-full' : '-translate-x-full'),
+          'md:translate-x-0',
+          // Largeur desktop (collapse / expand)
+          collapsed ? 'md:w-[56px]' : 'md:w-60',
+          hoverExpand && isHovered ? 'md:shadow-xl md:shadow-black/10 md:dark:shadow-black/30' : '',
         ].join(' ')}
       >
         {/* Logo — icône dans w-10 fixe, texte toujours dans le DOM, clippé par overflow-hidden */}
@@ -61,7 +80,7 @@ export default function Sidebar() {
             <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-[2.2em]">cloud_circle</span>
             </span>
-            <h1 className={`text-slate-900 dark:text-white text-[1.4em] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
+            <h1 className={`text-slate-900 dark:text-white text-[1.4em] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 opacity-100 ${collapsed ? 'md:opacity-0' : 'md:opacity-100'}`}>
               CloudSpace
             </h1>
           </div>
@@ -79,7 +98,7 @@ export default function Sidebar() {
             >
               <div className="flex items-center justify-center gap-1">
                 <span className="material-symbols-outlined text-[1.3em] leading-none">add</span>
-                <span className={`whitespace-nowrap transition-all duration-150 ${collapsed ? 'hidden' : 'block'}`}>
+                <span className={`whitespace-nowrap transition-all duration-150 block ${collapsed ? 'md:hidden' : 'md:block'}`}>
                   Importer
                 </span>
               </div>
@@ -110,7 +129,7 @@ export default function Sidebar() {
                         item.path === '/starred' && isActive ? 'text-amber-500' : '',
                       ].join(' ')}>{item.icon}</span>
                     </span>
-                    <span className={`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>{item.label}</span>
+                    <span className={`whitespace-nowrap transition-opacity duration-150 opacity-100 ${collapsed ? 'md:opacity-0' : 'md:opacity-100'}`}>{item.label}</span>
                   </NavLink>
                 )
               }
@@ -149,28 +168,29 @@ export default function Sidebar() {
 
         {/* Barre de stockage */}
         <div className="border-t border-slate-200 dark:border-border-dark flex-shrink-0">
-          {collapsed ? (
-            <div className="flex items-center justify-center h-14">
+          {/* Version icône seule (uniquement desktop collapsed) */}
+          {collapsed && (
+            <div className="hidden md:flex items-center justify-center h-14">
               <span
                 className="material-symbols-outlined text-[20px] text-slate-400"
                 title={`${storage.formatted_used} / ${storage.formatted_limit}`}
               >cloud</span>
             </div>
-          ) : (
-            <div className="p-3.5">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Stockage</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">{storage.percentage}%</span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-border-dark rounded-full h-1.5 mb-1.5">
-                <div className="bg-primary h-1.5 rounded-full" style={{ width: `${storage.percentage}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-500">{storage.formatted_used} sur {storage.formatted_limit}</p>
-              <button className="mt-2.5 w-full py-1.5 text-[11px] font-medium text-primary border border-primary/30 rounded hover:bg-primary/5 transition-colors">
-                Améliorer le plan
-              </button>
-            </div>
           )}
+          {/* Version étendue : toujours sur mobile, desktop si non collapsed */}
+          <div className={`p-3.5 ${collapsed ? 'md:hidden' : ''}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Stockage</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">{storage.percentage}%</span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-border-dark rounded-full h-1.5 mb-1.5">
+              <div className="bg-primary h-1.5 rounded-full" style={{ width: `${storage.percentage}%` }} />
+            </div>
+            <p className="text-[10px] text-slate-500">{storage.formatted_used} sur {storage.formatted_limit}</p>
+            <button className="mt-2.5 w-full py-1.5 text-[11px] font-medium text-primary border border-primary/30 rounded hover:bg-primary/5 transition-colors">
+              Améliorer le plan
+            </button>
+          </div>
         </div>
       </aside>
     </>
