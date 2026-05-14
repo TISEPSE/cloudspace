@@ -555,6 +555,24 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
   const displayName = formatDisplayName(file.name, showExt)
   const menuRef = useRef(null)
   const longPress = useLongPress(() => menuRef.current?.open())
+
+  if (file._uploading) {
+    return (
+      <div className="relative bg-white dark:bg-surface-dark border-2 border-dashed border-primary/40 rounded-lg p-2 overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_25%,rgba(59,130,246,0.12)_50%,transparent_75%)] bg-[length:200%_100%] animate-[shimmer_1.6s_linear_infinite]" />
+        <div className="relative aspect-[4/3] rounded-md mb-2 flex items-center justify-center bg-primary/5">
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary animate-pulse">cloud_upload</span>
+          </div>
+        </div>
+        <div className="relative">
+          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
+          <p className="text-[11px] text-primary mt-0.5">Téléversement en cours…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       {...longPress}
@@ -973,14 +991,31 @@ export default function MyDrive() {
     fetchContents()
   }, [fetchContents])
 
-  // Sync temps réel : insère / retire les fichiers créés ou supprimés depuis
-  // un autre appareil sans nécessiter de refresh manuel.
+  // Sync temps réel : placeholder dès qu'un upload démarre (autre appareil),
+  // remplacement par la vraie tuile à la fin, suppression sur delete.
+  useSyncEvent('upload:started', useCallback((data) => {
+    if ((data?.parent_id || null) !== (folderId || null)) return
+    setFiles(prev => {
+      if (prev.find(f => f.id === data.temp_id)) return prev
+      return [{ id: data.temp_id, name: data.name, _uploading: true, mime_type: data.mime_type, icon: data.icon, icon_color: data.icon_color, icon_bg: data.icon_bg, size: data.size }, ...prev]
+    })
+  }, [folderId]))
+
   useSyncEvent('file:created', useCallback((data) => {
     if ((data?.parent_id || null) !== (folderId || null)) return
     if (data?.is_folder) {
       setFolders(prev => prev.find(f => f.id === data.id) ? prev : [data, ...prev])
     } else {
-      setFiles(prev => prev.find(f => f.id === data.id) ? prev : [data, ...prev])
+      setFiles(prev => {
+        const idx = data.temp_id ? prev.findIndex(f => f.id === data.temp_id) : -1
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = data
+          return next
+        }
+        if (prev.find(f => f.id === data.id)) return prev
+        return [data, ...prev]
+      })
     }
   }, [folderId]))
 

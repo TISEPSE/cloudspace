@@ -81,3 +81,8 @@
   --color-surface-dark: #251740;
   --color-border-dark: #33204f;
 }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

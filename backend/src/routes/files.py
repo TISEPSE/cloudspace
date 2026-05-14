@@ -92,6 +92,22 @@ def upload_file():
     file_uuid = str(uuid.uuid4())
     stored_name = file_uuid + ext
     save_path = os.path.join(user_dir, stored_name)
+
+    # Annonce l'arrivée d'un upload aux autres appareils du même user :
+    # une tuile placeholder apparaît immédiatement sur PC pendant le scan AV / save.
+    temp_id = 'tmp-' + file_uuid
+    icon_preview, icon_color_preview, icon_bg_preview = get_icon_for_mime(mime_type, original_name)
+    sync_hub.publish(g.current_user_id, 'upload:started', {
+        'temp_id': temp_id,
+        'name': original_name,
+        'size': file_size,
+        'mime_type': mime_type,
+        'icon': icon_preview,
+        'icon_color': icon_color_preview,
+        'icon_bg': icon_bg_preview,
+        'parent_id': parent_id,
+    })
+
     file.save(save_path)
 
     # Scan antivirus (fail-closed : si ClamAV est activé mais injoignable, on refuse)
@@ -142,6 +158,7 @@ def upload_file():
 
     payload = {
         'id': new_file.id,
+        'temp_id': temp_id,
         'name': new_file.name,
         'size': new_file.size,
         'formatted_size': format_file_size(new_file.size),
