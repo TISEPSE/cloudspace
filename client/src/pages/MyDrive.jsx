@@ -410,7 +410,7 @@ function FilterPanel({ filters, onFiltersChange, onClose }) {
 function DriveContentSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
         {[...Array(18)].map((_, i) => (
           <div key={i} className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg p-2">
             <div className="aspect-[4/3] bg-slate-100 dark:bg-border-dark/50 rounded-md mb-2" />
@@ -1310,7 +1310,7 @@ export default function MyDrive() {
       {(filteredFolders.length > 0 || filteredFiles.length > 0) && (
         <section>
           {view === 'grid' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {filteredFolders.map((folder) => (
                 <FolderCard
                   key={folder.id}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend } from '../lib/backendUrl'
+import { setTokens, setSessionUser } from '../lib/api'
 
 // État : 'checking' | 'setup' | 'down' | 'ok'
 export default function BackendGate({ children }) {
@@ -79,6 +80,7 @@ function SetupForm({ onSaved }) {
   const [url, setUrl] = useState('https://')
   const [testing, setTesting] = useState(false)
   const [err, setErr] = useState(null)
+  const [scanning, setScanning] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -99,12 +101,106 @@ function SetupForm({ onSaved }) {
     onSaved()
   }
 
+  const handleScan = async () => {
+    setErr(null)
+    setScanning(true)
+    try {
+      const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
+      // Vérifier la permission caméra
+      const { camera } = await BarcodeScanner.checkPermissions()
+      if (camera !== 'granted') {
+        const req = await BarcodeScanner.requestPermissions()
+        if (req.camera !== 'granted') {
+          setErr("Permission caméra refusée.")
+          setScanning(false)
+          return
+        }
+      }
+      const result = await BarcodeScanner.scan()
+      const raw = result.barcodes?.[0]?.rawValue
+      if (!raw) {
+        setErr('Aucun code détecté.')
+        setScanning(false)
+        return
+      }
+      let parsed
+      try { parsed = JSON.parse(raw) } catch {
+        setErr('QR code invalide.')
+        setScanning(false)
+        return
+      }
+      if (parsed.v !== 1 || !parsed.url || !parsed.token) {
+        setErr('QR code non reconnu.')
+        setScanning(false)
+        return
+      }
+      if (!/^https?:\/\/.+/i.test(parsed.url)) {
+        setErr("L'URL du QR est invalide.")
+        setScanning(false)
+        return
+      }
+      const cleanedUrl = parsed.url.replace(/\/+$/, '')
+      // Ping serveur
+      const ping = await pingBackend(cleanedUrl)
+      if (!ping.ok) {
+        setErr(`Impossible de joindre ${cleanedUrl}`)
+        setScanning(false)
+        return
+      }
+      // Consommer le token
+      const deviceId = localStorage.getItem('cloudspace_device_id') || (() => {
+        const id = crypto.randomUUID()
+        localStorage.setItem('cloudspace_device_id', id)
+        return id
+      })()
+      const res = await fetch(cleanedUrl + '/api/auth/device-pair/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: parsed.token,
+          device_id: deviceId,
+          device_label: 'Mobile CloudSpace',
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErr(data.error || `Pairing échoué (${res.status})`)
+        setScanning(false)
+        return
+      }
+      const data = await res.json()
+      setBackendUrl(cleanedUrl)
+      setTokens(data.access_token, data.refresh_token)
+      if (data.user) setSessionUser(data.user)
+      localStorage.setItem('cloudspace_session_started', Date.now().toString())
+      onSaved()
+    } catch (e) {
+      setErr(e.message || 'Erreur durant le scan')
+      setScanning(false)
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark shadow-lg p-6">
       <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Connecter votre CloudSpace</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-        Entrez l'adresse du serveur CloudSpace sur lequel vous êtes hébergé.
+        Scannez un QR code depuis Paramètres → Appareils, ou saisissez l'adresse du serveur manuellement.
       </p>
+
+      <button
+        onClick={handleScan}
+        disabled={scanning}
+        className="w-full mb-5 px-4 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+        {scanning ? 'Scan en cours…' : 'Scanner un QR code'}
+      </button>
+
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex-1 h-px bg-slate-200 dark:bg-border-dark" />
+        <span className="text-[11px] uppercase tracking-wider text-slate-400">ou</span>
+        <div className="flex-1 h-px bg-slate-200 dark:bg-border-dark" />
+      </div>
 
       <form onSubmit={handleSubmit}>
         <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
@@ -125,14 +221,14 @@ function SetupForm({ onSaved }) {
         <button
           type="submit"
           disabled={testing}
-          className="w-full mt-5 px-4 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full mt-5 px-4 py-3 bg-slate-100 dark:bg-border-dark text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-border-dark/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {testing ? (
             <>
-              <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent" />
               Connexion…
             </>
-          ) : 'Se connecter'}
+          ) : 'Se connecter manuellement'}
         </button>
       </form>
 

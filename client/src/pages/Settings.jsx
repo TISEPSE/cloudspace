@@ -792,9 +792,10 @@ function StockageSection() {
 export default function Settings() {
   const [active, setActive] = useState("profil");
   const allSections = useMemo(() => {
-    return isNative()
-      ? [...sections, { id: 'application', label: 'Application', icon: 'smartphone' }]
-      : sections;
+    if (isNative()) {
+      return [...sections, { id: 'application', label: 'Application', icon: 'smartphone' }];
+    }
+    return [...sections, { id: 'appareils', label: 'Appareils', icon: 'devices' }];
   }, []);
 
   return (
@@ -830,6 +831,7 @@ export default function Settings() {
           {active === 'apparence'   && <ApparenceSection />}
           {active === 'stockage'    && <StockageSection />}
           {active === 'application' && <ApplicationSection />}
+          {active === 'appareils'   && <DevicesSection />}
         </div>
       </main>
     </div>
@@ -946,6 +948,173 @@ function ApplicationSection() {
             Réinitialiser
           </button>
         </div>
+      </Card>
+    </div>
+  );
+}
+
+function DevicesSection() {
+  const { showToast } = useToast();
+  const [pairings, setPairings] = useState({ active: [], consumed: [] });
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [qrPayload, setQrPayload] = useState(null); // { token, expires_at, dataUrl }
+  const [now, setNow] = useState(Date.now());
+
+  const loadPairings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/api/auth/device-pair/list');
+      if (res.ok) setPairings(await res.json());
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPairings(); }, [loadPairings]);
+
+  // Tick every second pour le compte à rebours
+  useEffect(() => {
+    if (!qrPayload) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [qrPayload]);
+
+  const generateQR = async () => {
+    setGenerating(true);
+    try {
+      const res = await apiFetch('/api/auth/device-pair/create', { method: 'POST' });
+      if (!res.ok) {
+        showToast('Impossible de générer le QR code', 'error');
+        return;
+      }
+      const data = await res.json();
+      const payload = JSON.stringify({
+        v: 1,
+        url: window.location.origin,
+        token: data.pair_token,
+      });
+      const QRCode = (await import('qrcode')).default;
+      const dataUrl = await QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: 'M' });
+      setQrPayload({
+        token: data.pair_token,
+        expires_at: data.expires_at,
+        dataUrl,
+      });
+      loadPairings();
+    } catch (e) {
+      showToast('Erreur réseau', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const revoke = async (id) => {
+    if (!confirm('Révoquer cet appareil ?')) return;
+    try {
+      const res = await apiFetch(`/api/auth/device-pair/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Appareil révoqué', 'success');
+        loadPairings();
+        if (qrPayload && pairings.active.find(p => p.id === id)) {
+          setQrPayload(null);
+        }
+      }
+    } catch {
+      showToast('Erreur réseau', 'error');
+    }
+  };
+
+  const remainingSeconds = qrPayload
+    ? Math.max(0, Math.floor((new Date(qrPayload.expires_at).getTime() - now) / 1000))
+    : 0;
+  const expired = qrPayload && remainingSeconds === 0;
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <SectionTitle title="Ajouter un appareil" desc="Scannez le QR code depuis l'application mobile CloudSpace pour la connecter sans saisir votre mot de passe." />
+
+        {!qrPayload && (
+          <button
+            onClick={generateQR}
+            disabled={generating}
+            className="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+            {generating ? 'Génération…' : 'Générer un QR code'}
+          </button>
+        )}
+
+        {qrPayload && (
+          <div className="flex flex-col items-center gap-4">
+            <div className={`rounded-xl p-3 bg-white border-2 ${expired ? 'border-red-300 opacity-50' : 'border-slate-200'}`}>
+              <img src={qrPayload.dataUrl} alt="QR code de pairing" className="block w-[260px] h-[260px]" />
+            </div>
+
+            {/* Chrono */}
+            {!expired ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Expire dans <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums">
+                  {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm font-medium text-red-500">QR code expiré</p>
+            )}
+
+            {/* Boutons stylisés */}
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={generateQR}
+                disabled={generating}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium border border-slate-200 dark:border-border-dark text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark transition-colors disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                Régénérer
+              </button>
+              <button
+                onClick={() => setQrPayload(null)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium border border-slate-200 dark:border-border-dark text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <SectionTitle title="Appareils connectés" desc="Appareils ayant utilisé un QR code de pairing dans les 30 derniers jours." />
+        {loading ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Chargement…</p>
+        ) : pairings.consumed.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Aucun appareil connecté.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 dark:divide-border-dark -mx-2">
+            {pairings.consumed.map(p => (
+              <li key={p.id} className="flex items-center justify-between gap-3 px-2 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    {p.device_label || 'Appareil mobile'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {new Date(p.used_at).toLocaleString('fr-FR')} · {p.consumed_ip || '—'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revoke(p.id)}
+                  className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/5 transition-colors flex-shrink-0"
+                >
+                  Révoquer
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );

@@ -54,57 +54,37 @@
 5. App stocke l'URL backend + les tokens → utilisateur connecté, plus jamais besoin de retaper
 
 #### Backend (`backend/`)
-- [ ] Modèle SQLAlchemy `DevicePairing` : `{ id, user_id, token (uuid), expires_at, used_at, created_ip, consumed_ip, consumed_ua }`
-- [ ] Migration auto au démarrage (cf. `db.create_all`)
-- [ ] `POST /api/auth/device-pair/create` (auth requis) :
-  - génère `token = uuid4()`, `expires_at = now + 5min`
-  - insère en DB
-  - retourne `{ pair_token, expires_at }`
-- [ ] `POST /api/auth/device-pair/consume` (no auth) :
-  - body : `{ token, device_id }`
-  - vérifie : token existe, `used_at IS NULL`, `expires_at > now`
-  - marque `used_at = now`, `consumed_ip`, `consumed_ua`
-  - génère access/refresh tokens liés à `user_id`
-  - retourne `{ access_token, refresh_token, user }`
-  - rate-limit serré (5 tentatives / 15 min / IP)
-- [ ] `GET /api/auth/device-pair/list` (auth requis) : liste les pairings actifs + utilisés (vue Settings)
-- [ ] `DELETE /api/auth/device-pair/:id` (auth requis) : révoque un pairing non consommé
-- [ ] Tâche cron / lazy cleanup : purger les pairings `expires_at < now - 24h`
+- [x] Modèle SQLAlchemy `DevicePairing` (token urlsafe 256 bits, expires_at, used_at, ips, UA, device label)
+- [x] Migration auto via `db.create_all` (import ajouté dans `src/__init__.py`)
+- [x] `POST /api/auth/device-pair/create` (auth requis, rate-limit 10/h)
+- [x] `POST /api/auth/device-pair/consume` (no auth, rate-limit 10/15min) → access/refresh tokens
+- [x] `GET /api/auth/device-pair/list` (auth requis) → `{ active, consumed }`
+- [x] `DELETE /api/auth/device-pair/:id` (auth requis)
+- [x] Blueprint enregistré dans `src/routes/__init__.py`
+- [ ] Tâche cron / lazy cleanup : purger les pairings expirés > 24h (optionnel)
 
 #### Frontend web — générateur QR
-- [ ] `npm i qrcode` (≈ 8KB minifié)
-- [ ] Nouvel onglet/section dans Settings : « Appareils »
-  - Bouton « Ajouter un appareil » → POST `/api/auth/device-pair/create`
-  - Affiche le QR code (canvas) contenant le payload JSON :
-    ```json
-    {"v":1,"url":"https://cloudspace.tisepse.com","token":"<uuid>"}
-    ```
-    encodé en base64url → URI custom : `cloudspace://pair?d=<payload-b64>`
-  - Compte à rebours visuel (5 min)
-  - Bouton « Régénérer » si expiré
-- [ ] Liste des pairings consommés (date, IP, user-agent) avec bouton « Révoquer »
+- [x] `npm i qrcode`
+- [x] Section « Appareils » dans Settings (web uniquement)
+  - Génération QR contenant `{v:1, url, token}` en JSON brut
+  - Compte à rebours visuel (5 min) + bouton « Régénérer »
+- [x] Liste des appareils consommés (date, IP) avec bouton « Révoquer »
 
 #### Frontend mobile — scanner QR
-- [ ] `npm i @capacitor-mlkit/barcode-scanning` (alternative légère : `@capacitor-community/barcode-scanner` si poids critique)
-- [ ] Permission caméra déjà présente via `@capacitor/camera` (CAMERA)
-- [ ] `BackendGate` (écran setup) : ajout bouton « Scanner un QR code » à côté du champ URL
-- [ ] Au scan :
-  - parse `cloudspace://pair?d=<payload>` → décode base64url → JSON
-  - vérifie `v === 1`, URL valide, token UUID
-  - POST `<url>/api/auth/device-pair/consume` avec `{ token, device_id }`
-  - sauve URL backend + access/refresh tokens
-  - redirige sur Drive
+- [x] `npm i @capacitor-mlkit/barcode-scanning`
+- [x] Permission `CAMERA` ajoutée dans `AndroidManifest.xml`
+- [x] `BackendGate` : bouton « Scanner un QR code » en haut + saisie manuelle en fallback
+- [x] Au scan : parse JSON, vérifie `v === 1`, ping serveur, POST `/consume`, sauve URL + tokens + session_started
 
 #### Sécurité
-- [ ] Token à usage unique (consume marque `used_at`, second consume = 401)
-- [ ] TTL court (5 min) — fenêtre d'exfiltration minimale
-- [ ] Rate-limit consume : 5/15min/IP (anti brute-force du token court)
-- [ ] Log de l'IP + UA qui consomme — visible dans « Appareils »
-- [ ] Validation stricte côté mobile : refuser tout QR dont l'URL ne commence pas par `http://`/`https://` ou contient des caractères suspects
+- [x] Token à usage unique (consume marque `used_at`, second consume = 409)
+- [x] TTL court (5 min)
+- [x] Rate-limit consume : 10/15min/IP
+- [x] Log de l'IP + UA qui consomme — exposé dans `/list`
+- [x] Validation stricte côté mobile : refus si URL n'est pas http(s)://
 
-#### Polish
-- [ ] Vue « Appareils » Settings : afficher le device_id, date pairing, dernière activité, bouton révoquer
-- [ ] Onboarding : tutoriel inline « Comment connecter mon téléphone » avec capture d'écran
+#### Polish (plus tard)
+- [ ] Onboarding : tutoriel inline « Comment connecter mon téléphone »
 
 ---
 

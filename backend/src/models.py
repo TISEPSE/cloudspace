@@ -165,3 +165,22 @@ class PasswordResetToken(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', backref=db.backref('reset_tokens', lazy='dynamic'))
+
+
+class DevicePairing(db.Model):
+    """Pairing ephemere pour connecter un appareil mobile via QR code."""
+    __tablename__ = 'device_pairing'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+    created_ip = db.Column(db.String(45), nullable=True)
+    consumed_ip = db.Column(db.String(45), nullable=True)
+    consumed_ua = db.Column(db.String(500), nullable=True)
+    device_id = db.Column(db.String(64), nullable=True)
+    device_label = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', backref=db.backref('device_pairings', lazy='dynamic'))

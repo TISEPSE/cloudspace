@@ -64,23 +64,23 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
           'flex flex-col overflow-hidden flex-shrink-0',
           // Mobile : drawer fixe en overlay
           `fixed md:relative inset-y-0 ${sidebarPos === 'right' ? 'right-0' : 'left-0'} z-50`,
-          'w-60 md:w-auto',
+          'w-60',
           `transition-transform md:transition-[width] duration-200 ease-in-out`,
           // Slide in/out sur mobile
           mobileOpen ? 'translate-x-0' : (sidebarPos === 'right' ? 'translate-x-full' : '-translate-x-full'),
           'md:translate-x-0',
           // Largeur desktop (collapse / expand)
-          collapsed ? 'md:w-[56px]' : 'md:w-60',
+          collapsed ? 'md:w-[64px]' : 'md:w-64',
           hoverExpand && isHovered ? 'md:shadow-xl md:shadow-black/10 md:dark:shadow-black/30' : '',
         ].join(' ')}
       >
-        {/* Logo — icône dans w-10 fixe, texte toujours dans le DOM, clippé par overflow-hidden */}
-        <div className="h-16 flex items-center px-[10px] flex-shrink-0">
-          <div className="flex items-center text-primary min-w-0">
-            <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-[2.2em]">cloud_circle</span>
+        {/* Logo — icône dans w-9 fixe, texte toujours dans le DOM, clippé par overflow-hidden */}
+        <div className="h-14 flex items-center px-[10px] flex-shrink-0">
+          <div className="flex items-center text-primary min-w-0 gap-1">
+            <span className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[1.5em]">cloud_circle</span>
             </span>
-            <h1 className={`text-slate-900 dark:text-white text-[1.4em] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 opacity-100 ${collapsed ? 'md:opacity-0' : 'md:opacity-100'}`}>
+            <h1 className={`text-slate-900 dark:text-white text-[1em] font-bold tracking-tight whitespace-nowrap transition-opacity duration-150 opacity-100 ${collapsed ? 'md:opacity-0' : 'md:opacity-100'}`}>
               CloudSpace
             </h1>
           </div>

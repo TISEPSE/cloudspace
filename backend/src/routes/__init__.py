@@ -11,6 +11,7 @@ from src.routes.search import search_bp
 from src.routes.profile import profile_bp
 from src.routes.password_reset import password_reset_bp
 from src.routes.health import health_bp
+from src.routes.device_pair import device_pair_bp
 
 
 def register_blueprints(app):
@@ -27,3 +28,4 @@ def register_blueprints(app):
     app.register_blueprint(profile_bp)
     app.register_blueprint(password_reset_bp)
     app.register_blueprint(health_bp)
+    app.register_blueprint(device_pair_bp)
