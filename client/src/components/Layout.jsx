@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import FloatingActions from './FloatingActions'
 import BottomNav from './BottomNav'
 import UploadToaster from './UploadToaster'
+import BiometricEnrollmentPrompt from './BiometricEnrollmentPrompt'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { useAndroidBackButton } from '../hooks/useAndroidBackButton'
 import { useSyncEvents } from '../hooks/useSyncEvents'
@@ -53,6 +54,7 @@ export default function Layout() {
       </main>
       {sidebarRight && sidebar}
       <UploadToaster />
+      <BiometricEnrollmentPrompt />
     </div>
   )
 }
