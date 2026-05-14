@@ -6,6 +6,7 @@ import { UploadProvider } from './contexts/UploadContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import BackendGate from './components/BackendGate'
+import BiometricGate from './components/BiometricGate'
 import './index.css'
 import App from './App.jsx'
 
@@ -13,15 +14,17 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
       <BackendGate>
-        <BrowserRouter>
-          <AuthProvider>
-            <UploadProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </UploadProvider>
-          </AuthProvider>
-        </BrowserRouter>
+        <BiometricGate>
+          <BrowserRouter>
+            <AuthProvider>
+              <UploadProvider>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </UploadProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </BiometricGate>
       </BackendGate>
     </ThemeProvider>
   </StrictMode>,

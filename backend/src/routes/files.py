@@ -9,6 +9,7 @@ from src.models import File, User, ActivityLog, SharedFile
 from src.utils import get_icon_for_mime, format_file_size, format_relative_time
 from src.auth import login_required, media_or_login_required
 from src.clamav import scan_file as antivirus_scan, ClamAVError, is_enabled as antivirus_enabled
+from src.sync import hub as sync_hub
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def upload_file():
     db.session.commit()
     logger.info('File uploaded: %s (%s bytes) by user %s', new_file.name, file_size, g.current_user_id)
 
-    return jsonify({
+    payload = {
         'id': new_file.id,
         'name': new_file.name,
         'size': new_file.size,
@@ -149,7 +150,10 @@ def upload_file():
         'icon_color': new_file.icon_color,
         'icon_bg': new_file.icon_bg,
         'created_at': new_file.created_at.isoformat() + 'Z',
-    }), 201
+        'parent_id': new_file.parent_id,
+    }
+    sync_hub.publish(g.current_user_id, 'file:created', payload)
+    return jsonify(payload), 201
 
 
 @files_bp.route('/api/files/<file_id>', methods=['DELETE'])
@@ -179,6 +183,11 @@ def trash_file(file_id):
     db.session.commit()
     logger.info('File trashed: %s by user %s', f.name, g.current_user_id)
 
+    sync_hub.publish(g.current_user_id, 'file:deleted', {
+        'id': f.id,
+        'parent_id': f.original_parent_id,
+        'is_folder': f.is_folder,
+    })
     return jsonify({
         'id': f.id,
         'is_trashed': True,

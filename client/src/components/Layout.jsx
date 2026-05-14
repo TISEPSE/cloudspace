@@ -6,6 +6,8 @@ import BottomNav from './BottomNav'
 import UploadToaster from './UploadToaster'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { useAndroidBackButton } from '../hooks/useAndroidBackButton'
+import { useSyncEvents } from '../hooks/useSyncEvents'
+import { useAuth } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
 
 function useSyncAppearancePrefs() {
@@ -31,6 +33,8 @@ function useSyncAppearancePrefs() {
 export default function Layout() {
   useSyncAppearancePrefs()
   useAndroidBackButton()
+  const { user } = useAuth()
+  useSyncEvents(user?.id)
   const [sidebarPos] = useLocalPref('cloudspace_sidebar_position', 'left')
   const sidebarRight = sidebarPos === 'right'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)

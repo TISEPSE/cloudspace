@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
 import { useLongPress } from '../hooks/useLongPress'
+import { useSyncEvent } from '../hooks/useSyncEvents'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import SwipeableRow from '../components/SwipeableRow'
 import { shareItemNative } from '../lib/share'
@@ -971,6 +972,23 @@ export default function MyDrive() {
     setShowSkeleton(false)
     fetchContents()
   }, [fetchContents])
+
+  // Sync temps réel : insère / retire les fichiers créés ou supprimés depuis
+  // un autre appareil sans nécessiter de refresh manuel.
+  useSyncEvent('file:created', useCallback((data) => {
+    if ((data?.parent_id || null) !== (folderId || null)) return
+    if (data?.is_folder) {
+      setFolders(prev => prev.find(f => f.id === data.id) ? prev : [data, ...prev])
+    } else {
+      setFiles(prev => prev.find(f => f.id === data.id) ? prev : [data, ...prev])
+    }
+  }, [folderId]))
+
+  useSyncEvent('file:deleted', useCallback((data) => {
+    if (!data?.id) return
+    setFiles(prev => prev.filter(f => f.id !== data.id))
+    setFolders(prev => prev.filter(f => f.id !== data.id))
+  }, []))
 
   // Pull-to-refresh (mobile)
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh(dropZoneRef, fetchContents)

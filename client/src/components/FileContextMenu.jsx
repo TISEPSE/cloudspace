@@ -90,6 +90,15 @@ function BottomSheetMenu({ onClose, onAction, isFolder, isLocked, isStarred, isI
 
   const handleCloseStable = useCallback(() => {
     setVisible(false)
+    // Bloque le prochain clic au niveau document pour eviter que le tap sur
+    // le backdrop n'ouvre le fichier sous-jacent (click-through).
+    const swallow = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    document.addEventListener('click', swallow, { capture: true, once: true })
+    // Filet de securite : retire le listener apres 400ms s'il n'a pas servi.
+    setTimeout(() => document.removeEventListener('click', swallow, { capture: true }), 400)
     setTimeout(onClose, 200)
   }, [onClose])
 

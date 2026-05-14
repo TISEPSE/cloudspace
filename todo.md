@@ -88,6 +88,108 @@
 
 ---
 
+### Phase 8 — UX mobile + sync temps réel — ✅ implémenté
+
+**Bilan** :
+- ✅ 8.1 BackendGate : input URL supprimé, QR contient juste `{v:1, url}`, login normal après scan
+- ✅ 8.2 Plugin `@aparajita/capacitor-biometric-auth` + BiometricGate + toggle Settings → Sécurité (mobile only)
+- ✅ 8.3 Bug menu 3 points : capture-phase click swallower 400ms après fermeture du bottom-sheet
+- ✅ 8.4 SSE backend `/api/sync/events` + hook `useSyncEvents` + insertion temps réel dans MyDrive (file:created, file:deleted)
+
+**Limites connues** :
+- SSE in-memory hub : pub/sub par worker gunicorn. Avec 4 workers, les events ne traversent pas. À migrer vers Redis pub/sub si on scale.
+- Auth biométrique : protège l'accès à l'UI (gate au boot), mais le refresh token reste en clair dans localStorage. Pour chiffrer réellement, passer par un module natif Keystore.
+- Pas d'animation tuile en cours d'upload sur l'appareil distant : seul l'évènement final `file:created` est émis. Phase 8.5 si besoin.
+
+---
+
+### Phase 8 — Plan d'origine (référence)
+
+**4 chantiers indépendants** : revoir le flux de pairing, ajouter l'auth biométrique, corriger un bug de menu contextuel, et brancher une synchronisation live PC ↔ téléphone.
+
+#### 8.1 — Refonte du flux de pairing mobile
+
+**Constat** : actuellement le QR contient URL + token et logue directement → trop magique, et empêche l'enrôlement biométrique car aucune saisie de mot de passe n'a lieu.
+
+**Nouveau flux** :
+1. Premier lancement → écran setup mobile : **un seul bouton « Scanner un QR code »** (l'input URL manuel est supprimé)
+2. Scan du QR → on extrait uniquement l'URL serveur, on la sauve en local, on ping `/api/health`
+3. L'app affiche un écran login (email + mot de passe) — flux normal
+4. Après login réussi → prompt « Activer la connexion par empreinte digitale ? »
+   - Si oui : génère une clé Android Keystore liée à l'empreinte, chiffre le refresh token avec, stocke en `@capacitor/preferences`
+   - Si non : l'utilisateur devra retaper son mot de passe à chaque session
+
+**Backend** : aucune nouvelle route nécessaire. Le QR contient juste l'URL → on peut soit garder le flux `device-pair/consume` actuel pour les utilisateurs qui veulent zéro-saisie, soit basculer sur un payload QR minimaliste `{v:1, url}`.
+
+**Décision à prendre** : faut-il garder l'option « QR direct » (consume token immédiat) en parallèle, ou supprimer complètement pour forcer la saisie du mot de passe + biométrie ?
+
+#### 8.2 — Auth biométrique (Face ID / empreinte)
+
+- [ ] Installer `@aparajita/capacitor-biometric-auth` (compatible Capacitor 8)
+- [ ] Permission manifest : `<uses-permission android:name="android.permission.USE_BIOMETRIC" />`
+- [ ] Module `client/src/lib/biometric.js` :
+  - `isAvailable()` : check capabilities
+  - `enrollRefreshToken(refreshToken)` : prompt biométrie + chiffre + stocke
+  - `unlock()` : prompt biométrie + déchiffre → retourne le refresh token
+  - `disable()` : efface la clé chiffrée
+- [ ] BackendGate (après login réussi) : modal « Activer la biométrie ? Oui / Plus tard »
+- [ ] Settings → onglet « Sécurité » mobile : toggle « Déverrouillage par empreinte » + bouton « Désactiver »
+- [ ] Au boot mobile :
+  - Si `biometricEnabled` true → prompt biométrie en remplacement de l'écran login
+  - Sinon → écran login classique
+- [ ] Fallback : 3 échecs biométriques → bascule sur login mot de passe
+
+#### 8.3 — Bug menu contextuel mobile (3 points → fermeture modal ouvre le fichier)
+
+**Symptôme** : sur mobile, taper sur les 3 points (`⋮`) d'un fichier ouvre le bottom-sheet du menu. Fermer le bottom-sheet (backdrop tap ou bouton fermer) → le clic « traverse » et déclenche le `onClick` de la carte fichier sous-jacente → le fichier s'ouvre en preview. Comportement non désiré.
+
+**Cause probable** : le `onClick` de la carte se propage après que le bottom-sheet ait été démonté. Touchend du backdrop = mousedown sur la carte.
+
+**Fix** :
+- [ ] `BottomSheetMenu` (dans `FileContextMenu.jsx`) : sur `onClose`, appeler `e.preventDefault()` + `e.stopPropagation()` sur l'event du backdrop
+- [ ] Ajouter un délai bref (50ms via `setTimeout`) avant de démonter le sheet, pour que le clic ne traverse pas
+- [ ] OU : poser un overlay invisible plein écran de 200ms après fermeture, qui absorbe le premier clic post-fermeture
+- [ ] Vérifier aussi sur Drive, Galerie, Starred, SharedWithMe (toutes les vues qui utilisent FileContextMenu)
+
+#### 8.4 — Synchronisation temps réel des uploads (PC ↔ mobile)
+
+**But** : quand un fichier est uploadé depuis le téléphone (ou un autre onglet), tous les clients connectés (web PC + mobile) voient apparaître la nouvelle tuile **en temps réel**, avec animation de progression pendant l'upload, puis tuile finalisée.
+
+**Architecture** : Server-Sent Events (SSE) ou WebSocket. SSE plus simple côté Flask, suffisant pour des notifications unidirectionnelles serveur → client.
+
+**Backend** :
+- [ ] Nouvelle route `GET /api/sync/events` (auth requise) → renvoie un stream `text/event-stream`
+  - Filtre par `user_id` (chaque client n'écoute que ses propres events)
+  - Garde une connexion ouverte, envoie heartbeat toutes les 30s
+- [ ] Système de publication d'events (in-memory `Queue` par user, ou Redis si scale prévu)
+- [ ] Émettre un event à chaque mutation pertinente :
+  - `upload_started` : `{type, file_id (temp), name, size, folder_id}` → tuile placeholder
+  - `upload_progress` : `{file_id, progress}` (10 % d'intervalle pour limiter le trafic)
+  - `upload_done` : `{file_id, full_metadata}` → remplace placeholder par vraie tuile
+  - `file_deleted`, `folder_created`, `file_renamed`, `file_moved` (bonus)
+- [ ] Backend doit émettre AVANT le stream PUT vers le storage (état "en cours") et APRÈS commit DB (état "terminé")
+
+**Frontend** :
+- [ ] Hook global `useSyncEvents()` monté dans `AuthProvider` ou `Layout` :
+  - Ouvre la connexion SSE après login
+  - Reconnecte automatiquement si la connexion tombe (exponential backoff)
+  - Dispatch les events dans un EventTarget global (ou Zustand store)
+- [ ] Pages Drive / Galerie / Starred : s'abonnent aux events `upload_started/progress/done/deleted` filtrés par `folder_id` courant, insèrent/mettent à jour la tuile sans refetch complet
+- [ ] Tuile placeholder : aspect-ratio identique, fond gris animé (skeleton shimmer), bandeau bas avec barre de progression + nom du fichier
+- [ ] Lorsqu'un upload se termine sur l'appareil courant : ne PAS dédoubler avec l'UploadContext local (réconcilier via le file_id qui passera de temp → permanent)
+
+**Test** :
+- PC : ouvrir Drive
+- Mobile : prendre une photo → uploader
+- PC : doit voir apparaître une tuile placeholder, progresser, puis se finaliser, sans refresh manuel
+
+#### Estimation
+- 8.1 + 8.2 : ~1 journée (UX + plugin biométrique + intégration auth)
+- 8.3 : ~30 min (petit bug isolé)
+- 8.4 : ~1-2 jours (SSE backend + hook frontend + intégration tuiles + tests cross-device)
+
+---
+
 ### Fait dans cette session
 
 - [x] Onglet « Application » dans Settings (visible uniquement sur native) : changer l'URL serveur + bouton réinitialiser

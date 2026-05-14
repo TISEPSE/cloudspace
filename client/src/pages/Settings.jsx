@@ -6,6 +6,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { useLocalPref } from "../hooks/useLocalPref";
 import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend, apiUrl } from "../lib/backendUrl";
+import { isBiometricAvailable, isBiometricEnabled, enrollRefreshToken, disableBiometric } from "../lib/biometric";
+import { getRefreshToken } from "../lib/api";
 
 /* ─── Données ─── */
 
@@ -464,6 +466,8 @@ function SecuriteSection() {
           <span className="text-xs font-medium text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">Prochainement</span>
         </Row>
       </Card>
+
+      {isNative() && <BiometricCard />}
 
       <Card className="border-orange-200 dark:border-orange-500/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -953,168 +957,138 @@ function ApplicationSection() {
   );
 }
 
-function DevicesSection() {
+function BiometricCard() {
   const { showToast } = useToast();
-  const [pairings, setPairings] = useState({ active: [], consumed: [] });
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [qrPayload, setQrPayload] = useState(null); // { token, expires_at, dataUrl }
-  const [now, setNow] = useState(Date.now());
+  const [available, setAvailable] = useState(false);
+  const [enabled, setEnabled] = useState(() => isBiometricEnabled());
+  const [busy, setBusy] = useState(false);
 
-  const loadPairings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch('/api/auth/device-pair/list');
-      if (res.ok) setPairings(await res.json());
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    isBiometricAvailable().then(setAvailable);
   }, []);
 
-  useEffect(() => { loadPairings(); }, [loadPairings]);
+  const handleToggle = async () => {
+    setBusy(true);
+    try {
+      if (enabled) {
+        disableBiometric();
+        setEnabled(false);
+        showToast('Verrouillage biométrique désactivé', 'info');
+      } else {
+        const refresh = getRefreshToken();
+        if (!refresh) {
+          showToast('Reconnectez-vous d\'abord pour activer la biométrie', 'error');
+          return;
+        }
+        // On déclenche un prompt biométrique pour confirmer (sécurise l'opt-in).
+        const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+        await BiometricAuth.authenticate({
+          reason: 'Activer le verrouillage biométrique',
+          cancelTitle: 'Annuler',
+          androidTitle: 'CloudSpace',
+          androidSubtitle: 'Confirmez votre identité',
+        });
+        enrollRefreshToken(refresh);
+        setEnabled(true);
+        showToast('Verrouillage biométrique activé', 'success');
+      }
+    } catch (e) {
+      showToast(e?.message || 'Échec de l\'opération', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  // Tick every second pour le compte à rebours
-  useEffect(() => {
-    if (!qrPayload) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [qrPayload]);
+  if (!available) {
+    return (
+      <Card>
+        <Row label="Verrouillage biométrique" desc="Aucun capteur d'empreinte ou de visage détecté sur cet appareil.">
+          <span className="text-xs font-medium text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">Indisponible</span>
+        </Row>
+      </Card>
+    );
+  }
 
-  const generateQR = async () => {
+  return (
+    <Card>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-primary">fingerprint</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Verrouillage biométrique</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {enabled
+                ? 'CloudSpace demandera votre empreinte au démarrage.'
+                : 'Activez pour exiger une empreinte ou un visage à chaque ouverture.'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleToggle}
+          disabled={busy}
+          className={`w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
+            enabled
+              ? 'text-red-500 border border-red-500/30 hover:bg-red-500/5'
+              : 'text-white bg-primary hover:bg-blue-600'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">{enabled ? 'lock_open' : 'lock'}</span>
+          {busy ? '…' : (enabled ? 'Désactiver' : 'Activer')}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+function DevicesSection() {
+  const { showToast } = useToast();
+  const [generating, setGenerating] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+
+  const serverUrl = useMemo(() => window.location.origin.replace(/\/+$/, ''), []);
+
+  const generateQR = useCallback(async () => {
     setGenerating(true);
     try {
-      const res = await apiFetch('/api/auth/device-pair/create', { method: 'POST' });
-      if (!res.ok) {
-        showToast('Impossible de générer le QR code', 'error');
-        return;
-      }
-      const data = await res.json();
-      const payload = JSON.stringify({
-        v: 1,
-        url: window.location.origin,
-        token: data.pair_token,
-      });
+      const payload = JSON.stringify({ v: 1, url: serverUrl });
       const QRCode = (await import('qrcode')).default;
       const dataUrl = await QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: 'M' });
-      setQrPayload({
-        token: data.pair_token,
-        expires_at: data.expires_at,
-        dataUrl,
-      });
-      loadPairings();
-    } catch (e) {
-      showToast('Erreur réseau', 'error');
+      setQrDataUrl(dataUrl);
+    } catch {
+      showToast('Erreur lors de la génération du QR code', 'error');
     } finally {
       setGenerating(false);
     }
-  };
+  }, [serverUrl, showToast]);
 
-  const revoke = async (id) => {
-    if (!confirm('Révoquer cet appareil ?')) return;
-    try {
-      const res = await apiFetch(`/api/auth/device-pair/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('Appareil révoqué', 'success');
-        loadPairings();
-        if (qrPayload && pairings.active.find(p => p.id === id)) {
-          setQrPayload(null);
-        }
-      }
-    } catch {
-      showToast('Erreur réseau', 'error');
-    }
-  };
-
-  const remainingSeconds = qrPayload
-    ? Math.max(0, Math.floor((new Date(qrPayload.expires_at).getTime() - now) / 1000))
-    : 0;
-  const expired = qrPayload && remainingSeconds === 0;
+  // Génère automatiquement à l'ouverture de l'onglet (pas d'expiration).
+  useEffect(() => { generateQR(); }, [generateQR]);
 
   return (
     <div className="space-y-5">
       <Card>
-        <SectionTitle title="Ajouter un appareil" desc="Scannez le QR code depuis l'application mobile CloudSpace pour la connecter sans saisir votre mot de passe." />
+        <SectionTitle
+          title="Connecter un appareil"
+          desc="Scannez ce QR code depuis l'application mobile CloudSpace pour la connecter à votre serveur. Vous devrez ensuite vous identifier avec votre email et mot de passe."
+        />
 
-        {!qrPayload && (
-          <button
-            onClick={generateQR}
-            disabled={generating}
-            className="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
-            {generating ? 'Génération…' : 'Générer un QR code'}
-          </button>
-        )}
-
-        {qrPayload && (
-          <div className="flex flex-col items-center gap-4">
-            <div className={`rounded-xl p-3 bg-white border-2 ${expired ? 'border-red-300 opacity-50' : 'border-slate-200'}`}>
-              <img src={qrPayload.dataUrl} alt="QR code de pairing" className="block w-[260px] h-[260px]" />
+        <div className="flex flex-col items-center gap-4">
+          {generating || !qrDataUrl ? (
+            <div className="w-[260px] h-[260px] flex items-center justify-center bg-slate-100 dark:bg-border-dark/40 rounded-xl">
+              <span className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent" />
             </div>
-
-            {/* Chrono */}
-            {!expired ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Expire dans <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums">
-                  {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
-                </span>
-              </p>
-            ) : (
-              <p className="text-sm font-medium text-red-500">QR code expiré</p>
-            )}
-
-            {/* Boutons stylisés */}
-            <div className="flex gap-2 w-full">
-              <button
-                onClick={generateQR}
-                disabled={generating}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium border border-slate-200 dark:border-border-dark text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark transition-colors disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[16px]">refresh</span>
-                Régénérer
-              </button>
-              <button
-                onClick={() => setQrPayload(null)}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium border border-slate-200 dark:border-border-dark text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-border-dark transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-                Fermer
-              </button>
+          ) : (
+            <div className="rounded-xl p-3 bg-white border-2 border-slate-200">
+              <img src={qrDataUrl} alt="QR code de connexion" className="block w-[260px] h-[260px]" />
             </div>
-          </div>
-        )}
-      </Card>
+          )}
 
-      <Card>
-        <SectionTitle title="Appareils connectés" desc="Appareils ayant utilisé un QR code de pairing dans les 30 derniers jours." />
-        {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Chargement…</p>
-        ) : pairings.consumed.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Aucun appareil connecté.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-border-dark -mx-2">
-            {pairings.consumed.map(p => (
-              <li key={p.id} className="flex items-center justify-between gap-3 px-2 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                    {p.device_label || 'Appareil mobile'}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {new Date(p.used_at).toLocaleString('fr-FR')} · {p.consumed_ip || '—'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => revoke(p.id)}
-                  className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/5 transition-colors flex-shrink-0"
-                >
-                  Révoquer
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+            Adresse du serveur : <span className="font-mono text-slate-700 dark:text-slate-300">{serverUrl}</span>
+          </p>
+        </div>
       </Card>
     </div>
   );
