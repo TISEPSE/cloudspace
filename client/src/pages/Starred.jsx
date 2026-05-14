@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
 import FilePreviewModal from '../components/FilePreviewModal'
 import { apiFetch, downloadFile } from '../lib/api'
+import { useFileMutations } from '../hooks/useFileMutations'
 import { getMediaToken } from '../lib/mediaToken'
 import { useLocalPref } from '../hooks/useLocalPref'
 import { formatDisplayName } from '../utils/filename'
@@ -121,18 +122,13 @@ export default function Starred() {
 
   useEffect(() => { fetchStarred() }, [fetchStarred])
 
+  const mutations = useFileMutations({ onChange: fetchStarred })
   const handleAction = useCallback(async (actionId, item) => {
     switch (actionId) {
-      case 'star':
-        await apiFetch(`/api/files/${item.id}/star`, { method: 'PUT' })
-        fetchStarred()
-        break
+      case 'star':   await mutations.star(item); break
+      case 'trash':  await mutations.trash(item.id); break
       case 'preview':
         if (!item.is_folder) setPreviewFile(item)
-        break
-      case 'trash':
-        await apiFetch(`/api/files/${item.id}`, { method: 'DELETE' })
-        fetchStarred()
         break
       case 'download':
         downloadFile(item.id, item.name, item.is_folder).catch(() => {})
@@ -144,7 +140,7 @@ export default function Starred() {
         shareItemNative(item).catch(() => {})
         break
     }
-  }, [fetchStarred, navigate])
+  }, [mutations, navigate])
 
   const isEmpty = !loading && folders.length === 0 && files.length === 0
 

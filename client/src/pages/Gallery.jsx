@@ -11,29 +11,16 @@ import { takePhoto } from '../lib/camera'
 import { shareItemNative } from '../lib/share'
 import FilePreviewModal from '../components/FilePreviewModal'
 import FileContextMenu from '../components/FileContextMenu'
-import { useSyncEvent } from '../hooks/useSyncEvents'
+import { useSyncTiles } from '../hooks/useSyncTiles'
+import UploadingTilePlaceholder from '../components/UploadingTilePlaceholder'
 
-
-function UploadingTile({ name, square = true }) {
-  return (
-    <div className={`relative ${square ? 'aspect-square' : 'min-h-[140px]'} rounded-lg overflow-hidden border-2 border-dashed border-primary/40 bg-primary/5 flex items-center justify-center`}>
-      <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_25%,rgba(59,130,246,0.12)_50%,transparent_75%)] bg-[length:200%_100%] animate-[shimmer_1.6s_linear_infinite]" />
-      <div className="relative flex flex-col items-center gap-2 px-2 text-center">
-        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-          <span className="material-symbols-outlined text-primary animate-pulse text-[20px]">cloud_upload</span>
-        </div>
-        <p className="text-[10px] text-primary/80 font-medium truncate max-w-full">{name || 'Téléversement…'}</p>
-      </div>
-    </div>
-  )
-}
 
 function PhotoCard({ photo, onClick, onAction, displayName }) {
   const token = getMediaToken()
   const imgUrl = apiUrl(`/api/files/${photo.id}/download?inline=true&token=${token}`)
   const [loaded, setLoaded] = useState(false)
 
-  if (photo._uploading) return <UploadingTile name={displayName || photo.name} />
+  if (photo._uploading) return <UploadingTilePlaceholder variant="photo" name={displayName || photo.name} />
 
   return (
     <div
@@ -73,7 +60,7 @@ function MosaicCard({ photo, onClick, onAction, displayName }) {
   const imgUrl = apiUrl(`/api/files/${photo.id}/download?inline=true&token=${token}`)
   const [loaded, setLoaded] = useState(false)
 
-  if (photo._uploading) return <div className="break-inside-avoid mb-2"><UploadingTile name={displayName || photo.name} square={false} /></div>
+  if (photo._uploading) return <UploadingTilePlaceholder variant="mosaic" name={displayName || photo.name} />
 
   return (
     <div
@@ -145,34 +132,12 @@ export default function Gallery() {
     }
   }, [activeUploadCount, queue])
 
-  // Sync temps réel : placeholder à l'arrivée d'un upload (depuis n'importe quel
-  // appareil), remplacé par la vraie tuile à la fin du traitement serveur.
-  useSyncEvent('upload:started', useCallback((data) => {
-    if (!data?.mime_type?.startsWith('image/')) return
-    setPhotos(prev => {
-      if (prev.find(p => p.id === data.temp_id)) return prev
-      return [{ id: data.temp_id, name: data.name, _uploading: true, mime_type: data.mime_type }, ...prev]
-    })
-  }, []))
-
-  useSyncEvent('file:created', useCallback((data) => {
-    if (!data?.mime_type?.startsWith('image/')) return
-    setPhotos(prev => {
-      const idx = data.temp_id ? prev.findIndex(p => p.id === data.temp_id) : -1
-      if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = data
-        return next
-      }
-      if (prev.find(p => p.id === data.id)) return prev
-      return [data, ...prev]
-    })
-  }, []))
-
-  useSyncEvent('file:deleted', useCallback((data) => {
-    if (!data?.id) return
-    setPhotos(prev => prev.filter(p => p.id !== data.id))
-  }, []))
+  // Sync temps réel : ne reçoit que les fichiers image.
+  const galleryMatcher = useCallback(
+    (data) => !!data?.mime_type?.startsWith('image/'),
+    []
+  )
+  useSyncTiles({ matches: galleryMatcher, setItems: setPhotos })
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files)

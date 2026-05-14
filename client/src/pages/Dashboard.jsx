@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { apiFetch, downloadFile } from '../lib/api'
+import { useFileMutations } from '../hooks/useFileMutations'
 import { apiUrl } from '../lib/backendUrl'
 import FileContextMenu from '../components/FileContextMenu'
 import FilePreviewModal from '../components/FilePreviewModal'
@@ -185,6 +186,7 @@ export default function Dashboard() {
   const [storageTotal, setStorageTotal] = useState({ used: '0 GB', limit: '20 GB' })
   const [activityFeed, setActivityFeed] = useState([])
   const [quickAccessFiles, setQuickAccessFiles] = useState([])
+  const mutations = useFileMutations()
   const [teamMembers, setTeamMembers] = useState([])
   const [onlineCount, setOnlineCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -288,8 +290,8 @@ export default function Dashboard() {
     } else if (action === 'download') {
       downloadFile(file.id, file.name).catch(() => {})
     } else if (action === 'star') {
-      apiFetch(`/api/files/${file.id}/star`, { method: 'PUT' })
-        .then(() => setQuickAccessFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_starred: !f.is_starred } : f)))
+      mutations.star(file)
+        .then((res) => { if (res.ok) setQuickAccessFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_starred: !f.is_starred } : f)) })
         .catch(() => {})
     } else if (action === 'rename') {
       setRenameTarget(file)

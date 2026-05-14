@@ -2,7 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import FileContextMenu from '../components/FileContextMenu'
 import { useLongPress } from '../hooks/useLongPress'
-import { useSyncEvent } from '../hooks/useSyncEvents'
+import { useSyncTiles } from '../hooks/useSyncTiles'
+import { useFileMutations } from '../hooks/useFileMutations'
+import UploadingTilePlaceholder from '../components/UploadingTilePlaceholder'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import SwipeableRow from '../components/SwipeableRow'
 import { shareItemNative } from '../lib/share'
@@ -556,22 +558,7 @@ function FileCard({ file, onPreview, onAction, showExt, onHover, onItemDragStart
   const menuRef = useRef(null)
   const longPress = useLongPress(() => menuRef.current?.open())
 
-  if (file._uploading) {
-    return (
-      <div className="relative bg-white dark:bg-surface-dark border-2 border-dashed border-primary/40 rounded-lg p-2 overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_25%,rgba(59,130,246,0.12)_50%,transparent_75%)] bg-[length:200%_100%] animate-[shimmer_1.6s_linear_infinite]" />
-        <div className="relative aspect-[4/3] rounded-md mb-2 flex items-center justify-center bg-primary/5">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary animate-pulse">cloud_upload</span>
-          </div>
-        </div>
-        <div className="relative">
-          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{displayName}</p>
-          <p className="text-[11px] text-primary mt-0.5">Téléversement en cours…</p>
-        </div>
-      </div>
-    )
-  }
+  if (file._uploading) return <UploadingTilePlaceholder variant="grid" name={displayName} />
 
   return (
     <div
@@ -991,39 +978,12 @@ export default function MyDrive() {
     fetchContents()
   }, [fetchContents])
 
-  // Sync temps réel : placeholder dès qu'un upload démarre (autre appareil),
-  // remplacement par la vraie tuile à la fin, suppression sur delete.
-  useSyncEvent('upload:started', useCallback((data) => {
-    if ((data?.parent_id || null) !== (folderId || null)) return
-    setFiles(prev => {
-      if (prev.find(f => f.id === data.temp_id)) return prev
-      return [{ id: data.temp_id, name: data.name, _uploading: true, mime_type: data.mime_type, icon: data.icon, icon_color: data.icon_color, icon_bg: data.icon_bg, size: data.size }, ...prev]
-    })
-  }, [folderId]))
-
-  useSyncEvent('file:created', useCallback((data) => {
-    if ((data?.parent_id || null) !== (folderId || null)) return
-    if (data?.is_folder) {
-      setFolders(prev => prev.find(f => f.id === data.id) ? prev : [data, ...prev])
-    } else {
-      setFiles(prev => {
-        const idx = data.temp_id ? prev.findIndex(f => f.id === data.temp_id) : -1
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = data
-          return next
-        }
-        if (prev.find(f => f.id === data.id)) return prev
-        return [data, ...prev]
-      })
-    }
-  }, [folderId]))
-
-  useSyncEvent('file:deleted', useCallback((data) => {
-    if (!data?.id) return
-    setFiles(prev => prev.filter(f => f.id !== data.id))
-    setFolders(prev => prev.filter(f => f.id !== data.id))
-  }, []))
+  // Sync temps réel : placeholder + remplacement + suppression cross-device.
+  const driveMatcher = useCallback(
+    (data) => (data?.parent_id || null) === (folderId || null),
+    [folderId]
+  )
+  useSyncTiles({ matches: driveMatcher, setItems: setFiles, setFolders })
 
   // Pull-to-refresh (mobile)
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh(dropZoneRef, fetchContents)
@@ -1143,25 +1103,14 @@ export default function MyDrive() {
     e.target.value = ''
   }, [uploadFiles])
 
-  const toggleStar = useCallback(async (item) => {
-    try {
-      const res = await apiFetch(`/api/files/${item.id}/star`, { method: 'PUT' })
-      if (res.ok) fetchContents()
-    } catch { /* silently fail */ }
-  }, [fetchContents])
+  const mutations = useFileMutations({ onChange: fetchContents })
+  const toggleStar = useCallback((item) => mutations.star(item).catch(() => {}), [mutations])
 
   const confirmRename = useCallback(async (newName) => {
     if (!renameTarget) return
-    try {
-      const res = await apiFetch(`/api/files/${renameTarget.id}/rename`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName }),
-      })
-      if (res.ok) fetchContents()
-    } catch { /* silently fail */ }
+    await mutations.rename(renameTarget.id, newName).catch(() => {})
     setRenameTarget(null)
-  }, [renameTarget, fetchContents])
+  }, [renameTarget, mutations])
 
   const handleFileAction = useCallback((actionId, file) => {
     switch (actionId) {
