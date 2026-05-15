@@ -11,12 +11,11 @@ import { initAuthStorage } from './lib/api'
 import './index.css'
 import App from './App.jsx'
 
-// Ne jamais bloquer le rendu : si l'init du storage rate ou hang,
-// on rend quand même l'app après 2 s (l'utilisateur sera redirigé sur login).
-await Promise.race([
-  initAuthStorage().catch((e) => console.error('initAuthStorage failed:', e)),
-  new Promise(resolve => setTimeout(resolve, 2000)),
-])
+// Sur web, le cache est initialisé synchrone (cf. lib/api.js).
+// Sur native, on lance l'init en parallèle du render (fire-and-forget) :
+// si un apiFetch arrive avant que le cache soit prêt, il échouera puis
+// AuthContext fera un retry après le refresh token. Pas de blocage.
+initAuthStorage().catch((e) => console.error('initAuthStorage failed:', e))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

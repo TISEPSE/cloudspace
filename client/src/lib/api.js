@@ -22,7 +22,9 @@ async function getPrefs() {
   return _prefs
 }
 
-// Cache mémoire (source de vérité pour la lecture sync)
+// Cache mémoire (source de vérité pour la lecture sync). Sur web, on
+// initialise immédiatement depuis localStorage pour ne JAMAIS bloquer le
+// boot React. Sur native, on charge depuis Preferences en async.
 const cache = {
   access: null,
   refresh: null,
@@ -30,28 +32,34 @@ const cache = {
   ready: false,
 }
 
+if (!IS_NATIVE) {
+  try {
+    cache.access = localStorage.getItem(ACCESS_TOKEN_KEY)
+    cache.refresh = localStorage.getItem(REFRESH_TOKEN_KEY)
+    const u = sessionStorage.getItem(SESSION_USER_KEY)
+    cache.user = u ? JSON.parse(u) : null
+  } catch { /* ignore */ }
+  cache.ready = true
+}
+
 /**
- * À appeler une fois au démarrage de l'app (avant tout apiFetch).
- * Charge les tokens depuis Preferences (native) ou localStorage (web)
- * vers le cache mémoire.
+ * À appeler une fois au démarrage de l'app sur native (no-op sur web).
+ * Charge les tokens depuis @capacitor/preferences vers le cache mémoire.
  */
 export async function initAuthStorage() {
   if (cache.ready) return
-  if (IS_NATIVE) {
+  try {
     const prefs = await getPrefs()
+    if (!prefs) { cache.ready = true; return }
     cache.access = (await prefs.get({ key: ACCESS_TOKEN_KEY })).value || null
     cache.refresh = (await prefs.get({ key: REFRESH_TOKEN_KEY })).value || null
     const userStr = (await prefs.get({ key: SESSION_USER_KEY })).value
     try { cache.user = userStr ? JSON.parse(userStr) : null } catch { cache.user = null }
-  } else {
-    cache.access = localStorage.getItem(ACCESS_TOKEN_KEY)
-    cache.refresh = localStorage.getItem(REFRESH_TOKEN_KEY)
-    try {
-      const u = sessionStorage.getItem(SESSION_USER_KEY)
-      cache.user = u ? JSON.parse(u) : null
-    } catch { cache.user = null }
+  } catch (e) {
+    console.error('initAuthStorage:', e)
+  } finally {
+    cache.ready = true
   }
-  cache.ready = true
 }
 
 function persist(key, value) {
