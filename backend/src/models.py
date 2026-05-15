@@ -184,3 +184,24 @@ class DevicePairing(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', backref=db.backref('device_pairings', lazy='dynamic'))
+
+
+class DeviceSession(db.Model):
+    """Trace une session active par device_id (un appareil = un device_id stable
+    cote client). Mise a jour a chaque login + refresh ; supprimee a logout."""
+    __tablename__ = 'device_session'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    device_id = db.Column(db.String(64), nullable=False, index=True)
+    label = db.Column(db.String(120), nullable=True)  # ex: "Chrome sur Windows", "Mobile CloudSpace"
+    last_ip = db.Column(db.String(45), nullable=True)
+    last_ua = db.Column(db.String(500), nullable=True)
+    last_seen_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'device_id', name='uq_device_session_user_device'),
+    )
+
+    user = db.relationship('User', backref=db.backref('device_sessions', lazy='dynamic'))

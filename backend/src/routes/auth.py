@@ -9,7 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.extensions import db, limiter
-from src.models import User, UserSettings, TokenBlocklist, EmailVerificationToken
+from src.models import User, UserSettings, TokenBlocklist, EmailVerificationToken, DeviceSession
 from src.auth import generate_access_token, generate_refresh_token, generate_media_token, decode_token, login_required
 
 auth_bp = Blueprint('auth', __name__)
@@ -23,6 +23,75 @@ _NATIVE_ORIGINS = frozenset((
     'http://localhost',
     'https://localhost',
 ))
+
+
+def _client_ip():
+    return (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+
+
+def _device_label_from_ua(ua):
+    """Petit label lisible deduit du User-Agent."""
+    if not ua:
+        return 'Appareil inconnu'
+    ua_low = ua.lower()
+    # Mobile native
+    origin = request.headers.get('Origin', '')
+    if origin in _NATIVE_ORIGINS:
+        return 'Mobile CloudSpace'
+    # Browsers
+    if 'edg/' in ua_low or 'edge/' in ua_low:
+        browser = 'Edge'
+    elif 'chrome/' in ua_low and 'chromium' not in ua_low:
+        browser = 'Chrome'
+    elif 'firefox/' in ua_low:
+        browser = 'Firefox'
+    elif 'safari/' in ua_low:
+        browser = 'Safari'
+    else:
+        browser = 'Navigateur'
+    # OS
+    if 'android' in ua_low:
+        os_name = 'Android'
+    elif 'iphone' in ua_low or 'ipad' in ua_low:
+        os_name = 'iOS'
+    elif 'mac os' in ua_low or 'macintosh' in ua_low:
+        os_name = 'macOS'
+    elif 'windows' in ua_low:
+        os_name = 'Windows'
+    elif 'linux' in ua_low:
+        os_name = 'Linux'
+    else:
+        os_name = ''
+    return f'{browser} sur {os_name}'.strip(' sur')
+
+
+def _touch_session(user_id, device_id):
+    """Cree ou met a jour une DeviceSession pour cet appareil."""
+    if not device_id:
+        return
+    try:
+        session = DeviceSession.query.filter_by(user_id=user_id, device_id=device_id).first()
+        ua = request.headers.get('User-Agent', '')[:500]
+        ip = _client_ip()
+        now = datetime.now(timezone.utc)
+        if session:
+            session.last_seen_at = now
+            session.last_ip = ip
+            session.last_ua = ua
+            session.label = _device_label_from_ua(ua)
+        else:
+            session = DeviceSession(
+                user_id=user_id,
+                device_id=device_id,
+                label=_device_label_from_ua(ua),
+                last_ip=ip,
+                last_ua=ua,
+                last_seen_at=now,
+            )
+            db.session.add(session)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 def _verify_turnstile(token, remote_ip=''):
     if not TURNSTILE_SECRET:
@@ -246,6 +315,7 @@ def login():
     device_id = data.get('device_id', '')
     access_token = generate_access_token(user.id)
     refresh_token, _ = generate_refresh_token(user.id, device_id=device_id)
+    _touch_session(user.id, device_id)
 
     return jsonify({
         'access_token': access_token,
@@ -291,8 +361,10 @@ def refresh():
     db.session.add(TokenBlocklist(jti=jti))
     db.session.commit()
 
+    effective_device_id = token_device_id or device_id
     new_access_token = generate_access_token(user.id)
-    new_refresh_token, _ = generate_refresh_token(user.id, device_id=token_device_id or device_id)
+    new_refresh_token, _ = generate_refresh_token(user.id, device_id=effective_device_id)
+    _touch_session(user.id, effective_device_id)
 
     return jsonify({
         'access_token': new_access_token,
@@ -320,3 +392,42 @@ def logout():
 def get_media_token():
     token = generate_media_token(g.current_user_id)
     return jsonify({'media_token': token, 'expires_in': 300})
+
+
+@auth_bp.route('/api/auth/sessions', methods=['GET'])
+@login_required
+def list_sessions():
+    """Liste les appareils ayant une session active (vue par PC -> Settings -> Appareils)."""
+    user_id = g.current_user_id
+    current_device_id = request.headers.get('X-Device-Id', '') or request.args.get('device_id', '')
+    sessions = (DeviceSession.query
+                .filter_by(user_id=user_id)
+                .order_by(DeviceSession.last_seen_at.desc())
+                .all())
+    return jsonify({
+        'sessions': [{
+            'id': s.id,
+            'device_id': s.device_id,
+            'label': s.label or 'Appareil inconnu',
+            'last_ip': s.last_ip,
+            'last_ua': s.last_ua,
+            'last_seen_at': (s.last_seen_at.replace(tzinfo=timezone.utc).isoformat() if s.last_seen_at else None),
+            'created_at': (s.created_at.replace(tzinfo=timezone.utc).isoformat() if s.created_at else None),
+            'is_current': s.device_id == current_device_id,
+        } for s in sessions],
+    })
+
+
+@auth_bp.route('/api/auth/sessions/<session_id>', methods=['DELETE'])
+@login_required
+def revoke_session(session_id):
+    """Supprime une session (l'appareil concerne devra refaire un login complet
+    a la prochaine ouverture, son refresh token actuel restant valide jusqu'a
+    expiration JWT mais aucune trace ne sera affichee)."""
+    user_id = g.current_user_id
+    session = DeviceSession.query.filter_by(id=session_id, user_id=user_id).first()
+    if not session:
+        return jsonify({'error': 'Session introuvable'}), 404
+    db.session.delete(session)
+    db.session.commit()
+    return jsonify({'ok': True})

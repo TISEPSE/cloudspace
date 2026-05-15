@@ -1042,12 +1042,35 @@ function BiometricCard() {
   );
 }
 
+function deviceIcon(label) {
+  const l = (label || '').toLowerCase();
+  if (l.includes('mobile') || l.includes('android') || l.includes('ios')) return 'smartphone';
+  if (l.includes('mac') || l.includes('windows') || l.includes('linux')) return 'computer';
+  return 'devices';
+}
+
+function formatRelative(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return 'à l\'instant';
+  if (diff < 3_600_000) return `il y a ${Math.floor(diff / 60_000)} min`;
+  if (diff < 86_400_000) return `il y a ${Math.floor(diff / 3_600_000)} h`;
+  if (diff < 30 * 86_400_000) return `il y a ${Math.floor(diff / 86_400_000)} j`;
+  return d.toLocaleDateString('fr-FR');
+}
+
 function DevicesSection() {
   const { showToast } = useToast();
   const [generating, setGenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
 
   const serverUrl = useMemo(() => window.location.origin.replace(/\/+$/, ''), []);
+  const currentDeviceId = useMemo(() => {
+    try { return localStorage.getItem('cloudspace_device_id') || ''; } catch { return ''; }
+  }, []);
 
   const generateQR = useCallback(async () => {
     setGenerating(true);
@@ -1063,14 +1086,88 @@ function DevicesSection() {
     }
   }, [serverUrl, showToast]);
 
-  // Génère automatiquement à l'ouverture de l'onglet (pas d'expiration).
-  useEffect(() => { generateQR(); }, [generateQR]);
+  const loadSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await apiFetch(`/api/auth/sessions?device_id=${encodeURIComponent(currentDeviceId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data.sessions || []);
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingSessions(false); }
+  }, [currentDeviceId]);
+
+  useEffect(() => { generateQR(); loadSessions(); }, [generateQR, loadSessions]);
+
+  const revoke = async (id, isCurrent) => {
+    if (isCurrent) {
+      showToast('Impossible de révoquer la session courante', 'error');
+      return;
+    }
+    if (!confirm('Retirer cet appareil de la liste ?')) return;
+    try {
+      const res = await apiFetch(`/api/auth/sessions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Appareil retiré', 'success');
+        loadSessions();
+      } else {
+        showToast('Échec de la suppression', 'error');
+      }
+    } catch {
+      showToast('Erreur réseau', 'error');
+    }
+  };
 
   return (
     <div className="space-y-5">
       <Card>
         <SectionTitle
-          title="Connecter un appareil"
+          title="Appareils connectés"
+          desc="Liste des appareils qui se sont récemment connectés à votre compte."
+        />
+        {loadingSessions ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Chargement…</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Aucun appareil enregistré.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 dark:divide-border-dark -mx-2">
+            {sessions.map(s => (
+              <li key={s.id} className="flex items-center gap-3 px-2 py-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-primary">{deviceIcon(s.label)}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{s.label}</p>
+                    {s.is_current && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        Cet appareil
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {formatRelative(s.last_seen_at)} · {s.last_ip || '—'}
+                  </p>
+                </div>
+                {!s.is_current && (
+                  <button
+                    onClick={() => revoke(s.id, s.is_current)}
+                    title="Retirer cet appareil"
+                    className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/5 transition-colors flex-shrink-0"
+                  >
+                    Retirer
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <SectionTitle
+          title="Connecter un appareil mobile"
           desc="Scannez ce QR code depuis l'application mobile CloudSpace pour la connecter à votre serveur. Vous devrez ensuite vous identifier avec votre email et mot de passe."
         />
 
