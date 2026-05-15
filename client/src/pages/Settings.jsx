@@ -8,6 +8,7 @@ import { useLocalPref } from "../hooks/useLocalPref";
 import { isNative, getBackendUrl, setBackendUrl, clearBackendUrl, pingBackend, apiUrl } from "../lib/backendUrl";
 import { isBiometricAvailable, isBiometricEnabled, enrollRefreshToken, disableBiometric } from "../lib/biometric";
 import { getRefreshToken } from "../lib/api";
+import { getSessions, isSessionsLoaded, subscribeSessions, refreshSessions } from "../lib/sessionsCache";
 
 /* ─── Données ─── */
 
@@ -1064,8 +1065,9 @@ function DevicesSection() {
   const { showToast } = useToast();
   const [generating, setGenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
+  // Lecture initiale depuis le cache global (pré-rempli par Layout au boot).
+  const [sessions, setSessions] = useState(() => getSessions());
+  const [loadingSessions, setLoadingSessions] = useState(() => !isSessionsLoaded());
 
   const serverUrl = useMemo(() => window.location.origin.replace(/\/+$/, ''), []);
   const currentDeviceId = useMemo(() => {
@@ -1086,19 +1088,22 @@ function DevicesSection() {
     }
   }, [serverUrl, showToast]);
 
-  const loadSessions = useCallback(async () => {
-    setLoadingSessions(true);
-    try {
-      const res = await apiFetch(`/api/auth/sessions?device_id=${encodeURIComponent(currentDeviceId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(data.sessions || []);
-      }
-    } catch { /* ignore */ }
-    finally { setLoadingSessions(false); }
+  // S'abonne au cache global. Pas de fetch à chaque montage.
+  useEffect(() => {
+    const unsub = subscribeSessions((s) => {
+      setSessions(s);
+      setLoadingSessions(false);
+    });
+    if (!isSessionsLoaded()) {
+      refreshSessions(currentDeviceId);
+    } else {
+      setLoadingSessions(false);
+    }
+    return unsub;
   }, [currentDeviceId]);
 
-  useEffect(() => { generateQR(); loadSessions(); }, [generateQR, loadSessions]);
+  // QR code généré une fois au montage (rapide, juste un canvas).
+  useEffect(() => { generateQR(); }, [generateQR]);
 
   const revoke = async (id, isCurrent) => {
     if (isCurrent) {
@@ -1110,7 +1115,7 @@ function DevicesSection() {
       const res = await apiFetch(`/api/auth/sessions/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Appareil retiré', 'success');
-        loadSessions();
+        refreshSessions(currentDeviceId);
       } else {
         showToast('Échec de la suppression', 'error');
       }

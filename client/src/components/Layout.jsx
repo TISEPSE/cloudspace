@@ -10,6 +10,7 @@ import { useAndroidBackButton } from '../hooks/useAndroidBackButton'
 import { useSyncEvents } from '../hooks/useSyncEvents'
 import { useAuth } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
+import { prefetchSessions } from '../lib/sessionsCache'
 
 function useSyncAppearancePrefs() {
   useEffect(() => {
@@ -36,6 +37,12 @@ export default function Layout() {
   useAndroidBackButton()
   const { user } = useAuth()
   useSyncEvents(user?.id)
+
+  // Pre-fetch la liste des appareils connectes une fois au boot pour eviter
+  // un loader a l'ouverture de Settings -> Appareils.
+  useEffect(() => {
+    if (user?.id) prefetchSessions()
+  }, [user?.id])
   const [sidebarPos] = useLocalPref('cloudspace_sidebar_position', 'left')
   const sidebarRight = sidebarPos === 'right'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
