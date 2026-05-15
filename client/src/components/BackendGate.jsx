@@ -78,6 +78,7 @@ export default function BackendGate({ children }) {
 function SetupForm({ onSaved }) {
   const [scanning, setScanning] = useState(false)
   const [err, setErr] = useState(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   const handleScan = async () => {
     setErr(null)
@@ -156,9 +157,46 @@ function SetupForm({ onSaved }) {
         </p>
       )}
 
+      <button
+        type="button"
+        onClick={() => setShowHelp(v => !v)}
+        className="mt-5 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary transition-colors"
+      >
+        <span className="material-symbols-outlined text-[14px]">help</span>
+        {showHelp ? 'Masquer l\'aide' : 'Comment trouver mon QR code ?'}
+      </button>
+
+      {showHelp && (
+        <div className="mt-3 rounded-xl bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark p-4 space-y-3">
+          <Step n={1}>
+            Sur votre <strong>ordinateur</strong>, ouvrez CloudSpace et connectez-vous.
+          </Step>
+          <Step n={2}>
+            Cliquez sur <strong>Paramètres</strong> dans le menu latéral.
+          </Step>
+          <Step n={3}>
+            Choisissez l'onglet <strong>« Appareils »</strong>. Un QR code s'affiche.
+          </Step>
+          <Step n={4}>
+            Revenez ici, appuyez sur <strong>« Scanner un QR code »</strong> et pointez la caméra vers l'écran.
+          </Step>
+        </div>
+      )}
+
       <p className="mt-5 text-[11px] text-slate-400 text-center leading-relaxed">
         Après la connexion au serveur, vous pourrez vous identifier avec votre email et mot de passe.
       </p>
+    </div>
+  )
+}
+
+function Step({ n, children }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-primary">
+        {n}
+      </div>
+      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{children}</p>
     </div>
   )
 }
