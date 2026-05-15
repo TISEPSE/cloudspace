@@ -87,28 +87,54 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = getAccessToken()
     const refresh = getRefreshToken()
+    const sessionStarted = parseInt(localStorage.getItem(SESSION_STARTED_KEY) || '0', 10)
+    const sessionExpired = sessionStarted > 0 && (Date.now() - sessionStarted) > SESSION_DURATION_MS
+
+    // Session > 24 h : on force le re-login complet (Turnstile + mot de passe).
+    if (sessionExpired) {
+      clearTokens()
+      // On purge aussi le refresh_token de tous les profils sauvegardés pour
+      // forcer un vrai login (et pas un loginWithProfile silencieux).
+      setSavedProfiles(prev => {
+        const next = prev.map(p => ({ ...p, refresh_token: null }))
+        persistProfiles(next)
+        return next
+      })
+      localStorage.removeItem(SESSION_STARTED_KEY)
+      setLoading(false)
+      return
+    }
 
     if (token) {
       const payload = parseJwtPayload(token)
       if (payload && payload.exp * 1000 > Date.now()) {
         const sessionUser = getSessionUser()
-        fetchAndSetProfile(sessionUser).finally(() => setLoading(false))
+        // Timeout filet de securite : si le profile ne charge pas en 5 s, on
+        // affiche l'app avec ce qu'on a en cache plutot que de bloquer.
+        Promise.race([
+          fetchAndSetProfile(sessionUser),
+          new Promise(resolve => setTimeout(resolve, 5000)),
+        ]).finally(() => setLoading(false))
         return
       }
     }
 
     if (refresh) {
+      // Timeout 5 s sur le refresh : si le serveur ne repond pas, on libere
+      // l'ecran de login (pas de loading infini).
+      const ac = new AbortController()
+      const timeoutId = setTimeout(() => ac.abort(), 5000)
       fetch(apiUrl('/api/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh, device_id: getDeviceId() }),
+        signal: ac.signal,
       })
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(data => {
           setTokens(data.access_token, data.refresh_token)
           initMediaToken()
           const sessionUser = getSessionUser()
-          // Mettre à jour le refresh token dans le profil sauvegardé
           if (sessionUser?.email && data.refresh_token) {
             setSavedProfiles(prev => {
               const next = prev.map(p => p.email === sessionUser.email
@@ -121,7 +147,10 @@ export function AuthProvider({ children }) {
           return fetchAndSetProfile(sessionUser)
         })
         .catch(() => clearTokens())
-        .finally(() => setLoading(false))
+        .finally(() => {
+          clearTimeout(timeoutId)
+          setLoading(false)
+        })
     } else {
       setLoading(false)
     }

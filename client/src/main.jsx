@@ -11,7 +11,12 @@ import { initAuthStorage } from './lib/api'
 import './index.css'
 import App from './App.jsx'
 
-await initAuthStorage()
+// Ne jamais bloquer le rendu : si l'init du storage rate ou hang,
+// on rend quand même l'app après 2 s (l'utilisateur sera redirigé sur login).
+await Promise.race([
+  initAuthStorage().catch((e) => console.error('initAuthStorage failed:', e)),
+  new Promise(resolve => setTimeout(resolve, 2000)),
+])
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
