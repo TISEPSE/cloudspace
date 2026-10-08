@@ -22,7 +22,7 @@
     "serve": "^14.2.6"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.3.3",
+    "@capacitor/android": "^8.4.3",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^7.6.4",
     "@capacitor/core": "^8.3.3",
@@ -43,5 +43,8 @@
     "tailwindcss": "^4.1.18",
     "vite": "^7.3.7",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "compression": "1.8.2"
   }
 }
